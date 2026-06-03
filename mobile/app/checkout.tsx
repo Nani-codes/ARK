@@ -4,23 +4,31 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { AddressCard } from '@/components/AddressCard';
 import { AppHeader } from '@/components/AppHeader';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeader } from '@/components/SectionHeader';
 import { createOrder } from '@/lib/api';
+import { formatFullAddress } from '@/lib/addressFormat';
 import { colors, spacing, typography } from '@/lib/theme';
+import { useAddressStore } from '@/stores/addresses';
 import { useCartStore } from '@/stores/cart';
-import { useLocationStore } from '@/stores/location';
 
 type PaymentMethod = 'neft' | 'cod';
 
 export default function CheckoutScreen() {
   const items = useCartStore((s) => s.items);
-  const deliveryAddress = useLocationStore((s) => s.deliveryAddress);
   const subtotal = useCartStore((s) => s.subtotal());
   const taxes = useCartStore((s) => s.taxes());
   const total = useCartStore((s) => s.total());
   const clear = useCartStore((s) => s.clear);
+
+  // Reactive selector — re-renders whenever selectedId or addresses change
+  const selectedAddress = useAddressStore((s) => {
+    if (s.selectedId) return s.addresses.find((a) => a.id === s.selectedId) ?? null;
+    return s.addresses.find((a) => a.isDefault) ?? s.addresses[0] ?? null;
+  });
+
   const [payment, setPayment] = useState<PaymentMethod>('neft');
   const queryClient = useQueryClient();
 
@@ -29,7 +37,7 @@ export default function CheckoutScreen() {
       createOrder({
         orderStatus: 'pending',
         paymentMethod: payment,
-        deliveryAddress,
+        deliveryAddress: selectedAddress ? formatFullAddress(selectedAddress) : '',
         subtotal,
         taxes,
         total,
@@ -44,10 +52,7 @@ export default function CheckoutScreen() {
     onSuccess: (res) => {
       clear();
       queryClient.invalidateQueries({ queryKey: ['orders'] });
-      router.replace({
-        pathname: '/order-success',
-        params: { orderNumber: res.data.orderNumber },
-      });
+      router.replace({ pathname: '/order-success', params: { orderNumber: res.data.orderNumber } });
     },
   });
 
@@ -56,7 +61,35 @@ export default function CheckoutScreen() {
       <AppHeader showBack showCart={false} showLocation={false} />
       <SectionHeader title="Secure Checkout" />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.sectionLabel}>SELECT PAYMENT METHOD</Text>
+
+        {/* ── Delivery Address ─────────────────────────────────────── */}
+        <Text style={styles.sectionLabel}>DELIVERY ADDRESS</Text>
+
+        {selectedAddress ? (
+          <View>
+            <AddressCard address={selectedAddress} />
+            <Pressable
+              style={styles.changeBtn}
+              onPress={() => router.push('/address/select')}>
+              <MaterialIcons name="edit-location-alt" size={16} color={colors.secondary} />
+              <Text style={styles.changeBtnText}>Change Address</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            style={styles.emptyAddress}
+            onPress={() => router.push('/address/select')}>
+            <MaterialIcons name="add-location-alt" size={28} color={colors.secondary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.emptyAddressTitle}>Select Delivery Address</Text>
+              <Text style={styles.emptyAddressSub}>Tap to add or choose a saved address</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={22} color={colors.secondary} />
+          </Pressable>
+        )}
+
+        {/* ── Payment Method ────────────────────────────────────────── */}
+        <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>SELECT PAYMENT METHOD</Text>
 
         <Pressable
           style={[styles.payOption, payment === 'neft' && styles.payOptionActive]}
@@ -98,7 +131,11 @@ export default function CheckoutScreen() {
           label="Place Order"
           onPress={() => placeOrder.mutate()}
           loading={placeOrder.isPending}
+          disabled={!selectedAddress}
         />
+        {!selectedAddress && (
+          <Text style={styles.addressHint}>Please select a delivery address to continue</Text>
+        )}
         {placeOrder.isError ? (
           <Text style={styles.error}>
             {placeOrder.error instanceof Error ? placeOrder.error.message : 'Order failed'}
@@ -112,7 +149,42 @@ export default function CheckoutScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.containerMargin, paddingBottom: spacing.unit12, gap: spacing.unit3 },
-  sectionLabel: { ...typography.labelLg, color: colors.primary, marginBottom: spacing.unit2, textTransform: 'uppercase' },
+
+  sectionLabel: {
+    ...typography.labelLg,
+    color: colors.primary,
+    textTransform: 'uppercase',
+    marginBottom: spacing.unit2,
+  },
+  sectionLabelSpaced: { marginTop: spacing.unit4 },
+
+  // Address
+  emptyAddress: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.unit3,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.secondary,
+    borderStyle: 'dashed',
+    padding: spacing.unit4,
+  },
+  emptyAddressTitle: { ...typography.labelLg, color: colors.secondary },
+  emptyAddressSub: { ...typography.bodyMd, color: colors.onSurfaceVariant, fontSize: 12, marginTop: 2 },
+
+  changeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.unit1,
+    alignSelf: 'flex-end',
+    marginTop: spacing.unit2,
+    paddingHorizontal: spacing.unit3,
+    paddingVertical: spacing.unit1,
+  },
+  changeBtnText: { ...typography.labelLg, color: colors.secondary },
+
+  // Payment
   payOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -125,18 +197,15 @@ const styles = StyleSheet.create({
   },
   payOptionActive: { borderWidth: 2, borderColor: colors.secondary },
   radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 20, height: 20, borderRadius: 10,
+    borderWidth: 2, borderColor: colors.primary,
+    alignItems: 'center', justifyContent: 'center',
   },
   radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.secondary },
   payText: { flex: 1 },
   payTitle: { ...typography.labelLg, color: colors.primary },
   paySub: { ...typography.bodyMd, color: colors.onSurfaceVariant },
+
   info: {
     flexDirection: 'row',
     gap: spacing.unit3,
@@ -149,5 +218,6 @@ const styles = StyleSheet.create({
   totalBox: { marginVertical: spacing.unit6 },
   totalLabel: { ...typography.labelMd, color: colors.onSurfaceVariant, textTransform: 'uppercase' },
   totalValue: { ...typography.priceDisplay, fontSize: 24, color: colors.primary },
+  addressHint: { ...typography.bodyMd, color: colors.onSurfaceVariant, textAlign: 'center', marginTop: spacing.unit1 },
   error: { color: colors.error, ...typography.bodyMd, textAlign: 'center', marginTop: spacing.unit2 },
 });

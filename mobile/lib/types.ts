@@ -94,3 +94,22 @@ export type StrapiListResponse<T> = {
 export type StrapiSingleResponse<T> = {
   data: T;
 };
+
+export type AddressType = 'home' | 'work' | 'other';
+
+export type SavedAddress = {
+  id: string;
+  label: AddressType;
+  flat: string;
+  building?: string;
+  street: string;
+  landmark?: string;
+  city: string;
+  state: string;
+  pincode: string;
+  instructions?: string;
+  lat?: number;
+  lng?: number;
+  isDefault: boolean;
+  lastUsedAt?: string;
+};
