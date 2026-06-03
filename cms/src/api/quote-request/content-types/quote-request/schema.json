@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "quote_requests",
+  "info": {
+    "singularName": "quote-request",
+    "pluralName": "quote-requests",
+    "displayName": "Quote Request",
+    "description": "Bulk quote request from customer"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "phone": {
+      "type": "string",
+      "required": true
+    },
+    "productName": {
+      "type": "string",
+      "required": true
+    },
+    "quantityTons": {
+      "type": "decimal",
+      "required": true
+    },
+    "siteAddress": {
+      "type": "text",
+      "required": true
+    },
+    "instructions": {
+      "type": "text"
+    },
+    "quoteStatus": {
+      "type": "enumeration",
+      "enum": ["new", "contacted", "closed"],
+      "default": "new",
+      "required": true
+    }
+  }
+}

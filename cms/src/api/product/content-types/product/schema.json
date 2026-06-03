@@ -1,0 +1,82 @@
+{
+  "kind": "collectionType",
+  "collectionName": "products",
+  "info": {
+    "singularName": "product",
+    "pluralName": "products",
+    "displayName": "Product",
+    "description": "Construction material product"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "name",
+      "required": true
+    },
+    "price": {
+      "type": "decimal",
+      "required": true
+    },
+    "compareAtPrice": {
+      "type": "decimal"
+    },
+    "unit": {
+      "type": "string",
+      "required": true,
+      "default": "Piece"
+    },
+    "description": {
+      "type": "text"
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category",
+      "inversedBy": "products"
+    },
+    "inStock": {
+      "type": "boolean",
+      "default": true
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "variantOptionName": {
+      "type": "string",
+      "default": "Size"
+    },
+    "variants": {
+      "type": "component",
+      "repeatable": true,
+      "component": "product.product-variant"
+    },
+    "specs": {
+      "type": "component",
+      "repeatable": true,
+      "component": "product.product-spec"
+    },
+    "replacementDays": {
+      "type": "integer",
+      "default": 7,
+      "min": 0
+    },
+    "bulkPricingEnabled": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

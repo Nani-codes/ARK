@@ -1,0 +1,19 @@
+{
+  "collectionName": "components_product_product_specs",
+  "info": {
+    "displayName": "Specification",
+    "description": "One product spec line (e.g. Grade → PPC).",
+    "icon": "bulletList"
+  },
+  "options": {},
+  "attributes": {
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "value": {
+      "type": "string",
+      "required": true
+    }
+  }
+}

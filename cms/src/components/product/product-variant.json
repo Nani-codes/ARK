@@ -1,0 +1,27 @@
+{
+  "collectionName": "components_product_product_variants",
+  "info": {
+    "displayName": "Size / pack option",
+    "description": "One purchasable option (e.g. 1/2 inch, 10 bags). Add a row per size or pack.",
+    "icon": "layer"
+  },
+  "options": {},
+  "attributes": {
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "optionKey": {
+      "type": "string"
+    },
+    "price": {
+      "type": "decimal",
+      "required": true,
+      "min": 0
+    },
+    "compareAtPrice": {
+      "type": "decimal",
+      "min": 0
+    }
+  }
+}
