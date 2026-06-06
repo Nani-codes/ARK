@@ -1,18 +1,16 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeader } from '@/components/SectionHeader';
 import { colors, spacing, typography } from '@/lib/theme';
 import { useCartStore } from '@/stores/cart';
-import { useLocationStore } from '@/stores/location';
+
 
 export default function CartScreen() {
   const items = useCartStore((s) => s.items);
-  const deliveryAddress = useLocationStore((s) => s.deliveryAddress);
-  const setDeliveryAddress = useLocationStore((s) => s.setDeliveryAddress);
   const removeItem = useCartStore((s) => s.removeItem);
   const subtotal = useCartStore((s) => s.subtotal());
   const taxes = useCartStore((s) => s.taxes());
@@ -55,18 +53,6 @@ export default function CartScreen() {
           </View>
         ))}
 
-        <View style={styles.addressCard}>
-          <MaterialIcons name="local-shipping" size={24} color={colors.icon} />
-          <View style={styles.addressBody}>
-            <Text style={styles.addressLabel}>DELIVERY TO</Text>
-            <TextInput
-              style={styles.addressInput}
-              value={deliveryAddress}
-              onChangeText={setDeliveryAddress}
-              multiline
-            />
-          </View>
-        </View>
 
         <View style={styles.summary}>
           <Row label="Items Total" value={`₹${subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} />
@@ -128,19 +114,6 @@ const styles = StyleSheet.create({
   lineName: { ...typography.labelLg, color: colors.primary },
   lineMeta: { ...typography.bodyMd, color: colors.onSurfaceVariant, marginTop: 4 },
   lineTotal: { ...typography.labelLg, color: colors.primary, marginTop: 4, fontWeight: '700' },
-  addressCard: {
-    flexDirection: 'row',
-    gap: spacing.unit3,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'rgba(119, 90, 25, 0.3)',
-    padding: spacing.unit4,
-    marginVertical: spacing.unit4,
-  },
-  addressBody: { flex: 1 },
-  addressLabel: { ...typography.labelMd, color: colors.onSurfaceVariant, textTransform: 'uppercase' },
-  addressInput: { ...typography.labelLg, color: colors.onSurface, marginTop: 4, padding: 0 },
   summary: {
     backgroundColor: colors.surfaceContainer,
     borderRadius: 12,

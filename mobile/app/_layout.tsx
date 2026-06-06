@@ -66,6 +66,8 @@ export default function RootLayout() {
         <Stack.Screen name="order-success" />
         <Stack.Screen name="order/[id]" />
         <Stack.Screen name="quote" />
+        <Stack.Screen name="address/select" />
+        <Stack.Screen name="address/add" />
       </Stack>
     </QueryClientProvider>
   );
