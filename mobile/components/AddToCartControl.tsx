@@ -39,6 +39,7 @@ export function AddToCartControl({
   };
 
   const handleAdd = () => {
+    if (!product.inStock) return;
     if (hasMultipleVariants && !variantProp) {
       router.push(`/product/${product.documentId}`);
       return;
@@ -47,6 +48,7 @@ export function AddToCartControl({
   };
 
   const handleIncrement = () => {
+    if (!product.inStock) return;
     if (quantity === 0) {
       addItem(product, { quantity: 1, variant });
     } else {
@@ -59,6 +61,14 @@ export function AddToCartControl({
   };
 
   const isMd = size === 'md';
+
+  if (!product.inStock) {
+    return (
+      <View style={[isMd ? styles.outOfStockMd : styles.outOfStockSm, style]}>
+        <Text style={isMd ? styles.outOfStockTextMd : styles.outOfStockTextSm}>OUT OF STOCK</Text>
+      </View>
+    );
+  }
 
   if (quantity === 0) {
     return (
@@ -188,4 +198,23 @@ const styles = StyleSheet.create({
     minWidth: 40,
     textAlign: 'center',
   },
+  outOfStockSm: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    borderRadius: 8,
+    paddingVertical: spacing.unit2,
+    backgroundColor: colors.surfaceContainer,
+  },
+  outOfStockTextSm: { ...typography.labelMd, color: colors.onSurfaceVariant, fontWeight: '700' },
+  outOfStockMd: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    paddingVertical: spacing.unit4,
+    backgroundColor: colors.surfaceContainer,
+  },
+  outOfStockTextMd: { ...typography.labelLg, color: colors.onSurfaceVariant, fontWeight: '700' },
 });

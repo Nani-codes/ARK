@@ -1,0 +1,54 @@
+{
+  "kind": "singleType",
+  "collectionName": "app_configs",
+  "info": {
+    "singularName": "app-config",
+    "pluralName": "app-configs",
+    "displayName": "App Config",
+    "description": "Mobile app configuration and promo content"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "promoTitle": {
+      "type": "string",
+      "default": "Free delivery on orders above ₹2,999"
+    },
+    "promoSubtitle": {
+      "type": "string",
+      "default": "Hyderabad · 60–120 min delivery"
+    },
+    "promoCtaLabel": {
+      "type": "string",
+      "default": "Shop Now"
+    },
+    "promoCtaLink": {
+      "type": "string",
+      "default": "/search"
+    },
+    "whatsappNumber": {
+      "type": "string",
+      "default": "919876543210"
+    },
+    "supportPhone": {
+      "type": "string",
+      "default": "18001234567"
+    },
+    "operatingHoursStart": {
+      "type": "integer",
+      "default": 8,
+      "min": 0,
+      "max": 23
+    },
+    "operatingHoursEnd": {
+      "type": "integer",
+      "default": 20,
+      "min": 1,
+      "max": 24
+    },
+    "faqs": {
+      "type": "json"
+    }
+  }
+}

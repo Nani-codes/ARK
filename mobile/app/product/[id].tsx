@@ -18,7 +18,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { ProductPriceBlock } from '@/components/ProductPriceBlock';
 import { VariantPicker } from '@/components/VariantPicker';
 import { fetchProduct } from '@/lib/api';
-import { getProductDisplayPricing, getProductVariants } from '@/lib/productPricing';
+import { formatInr, getProductDisplayPricing, getProductVariants } from '@/lib/productPricing';
 import { mediaUrl } from '@/lib/strapi';
 import { colors, spacing, typography } from '@/lib/theme';
 import type { ProductVariant } from '@/lib/types';
@@ -59,6 +59,8 @@ export default function ProductDetailScreen() {
   const { price, compareAtPrice, percent } = getProductDisplayPricing(product, selectedVariant);
   const variantLabel = product.variantOptionName ?? 'Size';
   const replacementDays = product.replacementDays ?? 7;
+  const minVariantPrice = Math.min(...getProductVariants(product).map((v) => v.price));
+  const unitLabel = product.priceUnitLabel ?? (product.unit === 'Sq Ft' ? '₹/ft²' : `/${product.unit}`);
 
   return (
     <View style={styles.container}>
@@ -95,8 +97,24 @@ export default function ProductDetailScreen() {
             percent={percent}
             size="lg"
           />
+          {getProductVariants(product).length > 1 ? (
+            <Text style={styles.startsAt}>
+              Starts at {formatInr(minVariantPrice)}
+              {unitLabel}
+            </Text>
+          ) : null}
 
           <View style={styles.trustRow}>
+            <View style={styles.trustChip}>
+              <MaterialIcons name="payments" size={18} color={colors.primary} />
+              <Text style={styles.trustText}>Pay After Verification</Text>
+            </View>
+            {product.authenticityVerified ? (
+              <View style={styles.trustChip}>
+                <MaterialIcons name="qr-code-2" size={18} color={colors.primary} />
+                <Text style={styles.trustText}>Original Checked</Text>
+              </View>
+            ) : null}
             <View style={styles.trustChip}>
               <MaterialIcons name="published-with-changes" size={18} color={colors.primary} />
               <Text style={styles.trustText}>{replacementDays} Day Replacement</Text>
@@ -108,7 +126,11 @@ export default function ProductDetailScreen() {
           </View>
 
           {product.bulkPricingEnabled ? (
-            <Pressable style={styles.bulkCard} onPress={() => router.push('/quote')}>
+            <Pressable
+              style={styles.bulkCard}
+              onPress={() =>
+                router.push(`/quote?product=${encodeURIComponent(product.name)}`)
+              }>
               <MaterialIcons name="savings" size={22} color={colors.secondary} />
               <View style={styles.bulkText}>
                 <Text style={styles.bulkTitle}>Unlock Bulk Prices</Text>
@@ -204,6 +226,7 @@ const styles = StyleSheet.create({
   },
   stockText: { ...typography.labelMd, color: colors.onPrimary, textTransform: 'uppercase' },
   name: { ...typography.headlineLgMobile, color: colors.primary, marginBottom: spacing.unit3 },
+  startsAt: { ...typography.labelLg, color: colors.onSurfaceVariant, marginTop: spacing.unit1 },
   trustRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

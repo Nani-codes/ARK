@@ -35,11 +35,15 @@ export function ProductCard({ product, compact }: ProductCardProps) {
             <MaterialIcons name="inventory-2" size={32} color={colors.icon} />
           </View>
         )}
-        {percent != null && percent > 0 ? (
+        {product.onDeal ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>DEAL</Text>
+          </View>
+        ) : percent != null && percent > 0 ? (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{percent}% OFF</Text>
           </View>
-        ) : product.featured ? (
+        ) : product.bestSeller ? (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>Best Seller</Text>
           </View>

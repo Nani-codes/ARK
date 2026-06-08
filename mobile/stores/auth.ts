@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { fetchMyProfile } from '@/lib/api';
 import { deleteSecureItem, getSecureItem, setSecureItem } from '@/lib/secureStorage';
 import { setAuthToken, verifyOtp } from '@/lib/strapi';
 import type { AuthUser } from '@/lib/types';
@@ -13,11 +14,18 @@ type AuthState = {
   isLoading: boolean;
   isHydrated: boolean;
   hydrate: () => Promise<void>;
-  login: (phone: string, otp: string) => Promise<void>;
+  login: (phone: string, otp: string) => Promise<AuthUser>;
+  refreshUser: () => Promise<AuthUser | null>;
+  setUser: (user: AuthUser) => Promise<void>;
   logout: () => Promise<void>;
+  needsOnboarding: () => boolean;
 };
 
-export const useAuthStore = create<AuthState>((set) => ({
+async function persistUser(user: AuthUser) {
+  await setSecureItem(USER_KEY, JSON.stringify(user));
+}
+
+export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
   user: null,
   isLoading: false,
@@ -40,13 +48,32 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const { jwt, user } = await verifyOtp(phone, otp);
       await setSecureItem(TOKEN_KEY, jwt);
-      await setSecureItem(USER_KEY, JSON.stringify(user));
+      await persistUser(user);
       setAuthToken(jwt);
       set({ token: jwt, user, isLoading: false });
+      return user;
     } catch (e) {
       set({ isLoading: false });
       throw e;
     }
+  },
+
+  refreshUser: async () => {
+    const { token } = get();
+    if (!token) return null;
+    try {
+      const res = await fetchMyProfile();
+      await persistUser(res.user);
+      set({ user: res.user });
+      return res.user;
+    } catch {
+      return get().user;
+    }
+  },
+
+  setUser: async (user) => {
+    await persistUser(user);
+    set({ user });
   },
 
   logout: async () => {
@@ -54,5 +81,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     await deleteSecureItem(USER_KEY);
     setAuthToken(null);
     set({ token: null, user: null });
+  },
+
+  needsOnboarding: () => {
+    const user = get().user;
+    return Boolean(user && user.onboardingComplete === false);
   },
 }));

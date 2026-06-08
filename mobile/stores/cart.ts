@@ -2,9 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { calcDeliveryFee, calcSubtotal, calcTaxes, calcTotal } from '@/lib/pricing';
 import { getProductVariants } from '@/lib/productPricing';
 import { mediaUrl } from '@/lib/strapi';
-import type { Product, ProductVariant } from '@/lib/types';
+import type { OrderItem, Product, ProductVariant } from '@/lib/types';
 
 export type CartLine = {
   lineId: string;
@@ -33,9 +34,11 @@ type CartState = {
   removeItem: (lineId: string) => void;
   updateQuantity: (lineId: string, quantity: number) => void;
   clear: () => void;
+  reorderLines: (lines: OrderItem[]) => void;
   itemCount: () => number;
   subtotal: () => number;
   taxes: () => number;
+  deliveryFee: () => number;
   total: () => number;
 };
 
@@ -94,13 +97,30 @@ export const useCartStore = create<CartState>()(
 
       clear: () => set({ items: [] }),
 
+      reorderLines: (lines) => {
+        const items = lines.map((line) => ({
+          lineId: cartLineId(line.productDocumentId ?? line.productName, line.variantId),
+          productDocumentId: line.productDocumentId ?? line.productName,
+          variantId: line.variantId,
+          variantLabel: line.variantLabel,
+          name: line.productName,
+          unit: line.unit ?? 'Piece',
+          unitPrice: Number(line.unitPrice),
+          quantity: line.quantity,
+        }));
+        set({ items });
+      },
+
       itemCount: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
 
-      subtotal: () => get().items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0),
+      subtotal: () => calcSubtotal(get().items),
 
-      taxes: () => Math.round(get().subtotal() * 0.05 * 100) / 100,
+      taxes: () => calcTaxes(get().subtotal()),
 
-      total: () => get().subtotal() + get().taxes(),
+      deliveryFee: () => calcDeliveryFee(get().subtotal()),
+
+      total: () =>
+        calcTotal(get().subtotal(), get().taxes(), get().deliveryFee()),
     }),
     {
       name: 'ark-cart',

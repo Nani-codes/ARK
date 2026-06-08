@@ -53,9 +53,10 @@ export function AppHeader({
         {showLocation ? (
           <Pressable
             style={styles.location}
-            onPress={() => void resolveFromDevice(true)}
+            onPress={() => router.push('/address/select')}
+            onLongPress={() => void resolveFromDevice(true)}
             accessibilityRole="button"
-            accessibilityLabel="Update delivery location">
+            accessibilityLabel="Choose delivery address">
             <MaterialIcons name="location-on" size={22} color={iconColor} />
             <View style={styles.locationText}>
               {!isNavy ? (

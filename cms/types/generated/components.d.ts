@@ -18,7 +18,10 @@ export interface OrderOrderItem extends Struct.ComponentSchema {
         },
         number
       >;
+    unit: Schema.Attribute.String;
     unitPrice: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    variantId: Schema.Attribute.String;
+    variantLabel: Schema.Attribute.String;
   };
 }
 

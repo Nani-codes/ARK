@@ -2,20 +2,34 @@ import type { Core } from '@strapi/strapi';
 
 import { migrateStatusColumns } from './bootstrap/migrate-status-columns';
 import { CATALOG_PRODUCTS } from './data/catalog-seed';
+import { HYDERABAD_PINCODES } from './data/hyderabad-pincodes';
 
 const PUBLIC_ACTIONS = [
   { controller: 'category', action: 'find' },
   { controller: 'category', action: 'findOne' },
   { controller: 'product', action: 'find' },
   { controller: 'product', action: 'findOne' },
+  { controller: 'app-config', action: 'find' },
+  { controller: 'serviceable-pincode', action: 'find' },
+  { controller: 'user-profile', action: 'listProfessionals' },
 ];
 
 const AUTH_ACTIONS = [
   { controller: 'order', action: 'find' },
   { controller: 'order', action: 'findOne' },
   { controller: 'order', action: 'create' },
+  { controller: 'order', action: 'update' },
   { controller: 'quote-request', action: 'find' },
   { controller: 'quote-request', action: 'create' },
+  { controller: 'address', action: 'find' },
+  { controller: 'address', action: 'findOne' },
+  { controller: 'address', action: 'create' },
+  { controller: 'address', action: 'update' },
+  { controller: 'address', action: 'delete' },
+  { controller: 'return-request', action: 'find' },
+  { controller: 'return-request', action: 'create' },
+  { controller: 'user-profile', action: 'me' },
+  { controller: 'user-profile', action: 'updateMe' },
 ];
 
 async function ensurePermission(
@@ -77,9 +91,62 @@ async function enablePermissions(strapi: Core.Strapi) {
   }
 }
 
+async function seedAppConfig(strapi: Core.Strapi) {
+  const existing = await strapi.db.query('api::app-config.app-config').findOne({});
+  if (existing) return;
+
+  await strapi.documents('api::app-config.app-config').create({
+    data: {
+      promoTitle: 'Free delivery on orders above ₹2,999',
+      promoSubtitle: 'Hyderabad · 60–120 min delivery slots',
+      promoCtaLabel: 'Shop Deals',
+      promoCtaLink: '/search?q=cement',
+      whatsappNumber: '919876543210',
+      supportPhone: '18001234567',
+      operatingHoursStart: 8,
+      operatingHoursEnd: 20,
+      faqs: [
+        {
+          q: 'What payment methods do you accept?',
+          a: 'UPI, cards, NEFT, and Cash on Delivery (up to ₹50,000).',
+        },
+        {
+          q: 'How fast is delivery in Hyderabad?',
+          a: 'ASAP slots target 60–90 minutes. Scheduled 2-hour and next-day slots are also available.',
+        },
+        {
+          q: 'Can I cancel my order?',
+          a: 'Yes, within 10 minutes of placing a pending order.',
+        },
+        {
+          q: 'Do you deliver to my pincode?',
+          a: 'We serve 100+ Hyderabad pincodes. Enter your pincode at checkout to verify.',
+        },
+      ],
+    },
+  });
+}
+
+async function seedPincodes(strapi: Core.Strapi) {
+  const count = await strapi.db.query('api::serviceable-pincode.serviceable-pincode').count();
+  if (count >= HYDERABAD_PINCODES.length) return;
+
+  for (const pincode of HYDERABAD_PINCODES) {
+    const exists = await strapi.db.query('api::serviceable-pincode.serviceable-pincode').findOne({
+      where: { pincode },
+    });
+    if (exists) continue;
+    await strapi.documents('api::serviceable-pincode.serviceable-pincode').create({
+      data: { pincode, city: 'Hyderabad', zone: 'GHMC', active: true },
+    });
+  }
+  strapi.log.info(`Seeded ${HYDERABAD_PINCODES.length} serviceable pincodes`);
+}
+
 async function seedData(strapi: Core.Strapi) {
   const categoryCount = await strapi.db.query('api::category.category').count();
   if (categoryCount > 0) {
+    await seedSupplementalProducts(strapi);
     return;
   }
 
@@ -115,12 +182,18 @@ async function seedData(strapi: Core.Strapi) {
     categoryMap[cat.slug] = created.documentId;
   }
 
+  let productCount = 0;
   for (const seed of CATALOG_PRODUCTS) {
     const categoryId = categoryMap[seed.categorySlug];
     if (!categoryId) {
       strapi.log.warn(`Skipping product ${seed.slug}: unknown category ${seed.categorySlug}`);
       continue;
     }
+    const exists = await strapi.db.query('api::product.product').findOne({
+      where: { slug: seed.slug },
+    });
+    if (exists) continue;
+
     const { categorySlug: _slug, ...productData } = seed;
     await strapi.documents('api::product.product').create({
       data: {
@@ -128,11 +201,39 @@ async function seedData(strapi: Core.Strapi) {
         category: categoryId,
       },
     });
+    productCount++;
   }
 
   strapi.log.info(
-    `Seeded ${categories.length} categories and ${CATALOG_PRODUCTS.length} products`
+    `Seeded ${categories.length} categories and ${productCount} products`
   );
+}
+
+async function seedSupplementalProducts(strapi: Core.Strapi) {
+  const categories = await strapi.db.query('api::category.category').findMany();
+  const categoryMap = Object.fromEntries(
+    categories.map((c: { slug: string; documentId: string }) => [c.slug, c.documentId])
+  );
+
+  let added = 0;
+  for (const seed of CATALOG_PRODUCTS) {
+    const existing = await strapi.db.query('api::product.product').findOne({
+      where: { slug: seed.slug },
+    });
+    if (existing) continue;
+
+    const categoryId = categoryMap[seed.categorySlug];
+    if (!categoryId) continue;
+
+    const { categorySlug: _slug, ...productData } = seed;
+    await strapi.documents('api::product.product').create({
+      data: { ...productData, category: categoryId },
+    });
+    added++;
+  }
+  if (added > 0) {
+    strapi.log.info(`Added ${added} supplemental catalog products`);
+  }
 }
 
 export default {
@@ -141,6 +242,8 @@ export default {
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
     await migrateStatusColumns(strapi);
     await enablePermissions(strapi);
+    await seedAppConfig(strapi);
+    await seedPincodes(strapi);
     await seedData(strapi);
   },
 };

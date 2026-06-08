@@ -22,15 +22,53 @@
     },
     "orderStatus": {
       "type": "enumeration",
-      "enum": ["pending", "confirmed", "out_for_delivery", "delivered"],
+      "enum": ["pending", "confirmed", "out_for_delivery", "delivered", "cancelled"],
       "default": "pending",
       "required": true
     },
     "paymentMethod": {
       "type": "enumeration",
-      "enum": ["neft", "cod"],
+      "enum": ["neft", "cod", "online"],
       "default": "cod",
       "required": true
+    },
+    "paymentStatus": {
+      "type": "enumeration",
+      "enum": ["pending", "paid", "failed", "refunded"],
+      "default": "pending"
+    },
+    "razorpayPaymentId": {
+      "type": "string"
+    },
+    "razorpayOrderId": {
+      "type": "string"
+    },
+    "deliveryFee": {
+      "type": "decimal",
+      "default": 0
+    },
+    "deliverySlot": {
+      "type": "enumeration",
+      "enum": ["asap", "two_hour", "next_day"],
+      "default": "asap"
+    },
+    "estimatedDeliveryAt": {
+      "type": "datetime"
+    },
+    "cancelUntil": {
+      "type": "datetime"
+    },
+    "pincode": {
+      "type": "string"
+    },
+    "gstin": {
+      "type": "string"
+    },
+    "businessName": {
+      "type": "string"
+    },
+    "assignedTo": {
+      "type": "string"
     },
     "deliveryAddress": {
       "type": "text",
@@ -52,6 +90,12 @@
     "total": {
       "type": "decimal",
       "required": true
+    },
+    "internalNotes": {
+      "type": "text"
+    },
+    "neftProofUrl": {
+      "type": "string"
     }
   }
 }

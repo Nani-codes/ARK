@@ -1,6 +1,6 @@
-import { useMutation } from '@tanstack/react-query';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -13,23 +13,47 @@ import {
 
 import { AppHeader } from '@/components/AppHeader';
 import { PrimaryButton } from '@/components/PrimaryButton';
-import { createQuoteRequest } from '@/lib/api';
+import { createQuoteRequest, fetchProducts } from '@/lib/api';
+import { formatFullAddress } from '@/lib/addressFormat';
 import { colors, spacing, typography } from '@/lib/theme';
+import { useAddressStore } from '@/stores/addresses';
 import { useAuthStore } from '@/stores/auth';
 
-const PRODUCT_OPTIONS = [
-  'Ready Mix Concrete (M25)',
-  'TMT Steel Bars (500D)',
-  'Portland Cement (OPC 53)',
-  'River Sand (Grade A)',
-];
-
 export default function QuoteScreen() {
+  const { product: productParam } = useLocalSearchParams<{ product?: string }>();
   const user = useAuthStore((s) => s.user);
-  const [productName, setProductName] = useState(PRODUCT_OPTIONS[0]);
+  const selectedAddress = useAddressStore((s) => s.getSelected());
+
+  const { data: bulkProducts } = useQuery({
+    queryKey: ['products', 'bulk'],
+    queryFn: () => fetchProducts({ pageSize: 50 }),
+    select: (res) => res.data.filter((p) => p.bulkPricingEnabled),
+  });
+
+  const options = bulkProducts?.length
+    ? bulkProducts.map((p) => p.name)
+    : ['Ready Mix Concrete (M25)', 'TMT Steel Bars (500D)', 'Portland Cement (OPC 53)'];
+
+  const [productName, setProductName] = useState(options[0] ?? '');
   const [quantityTons, setQuantityTons] = useState('');
   const [siteAddress, setSiteAddress] = useState('');
   const [instructions, setInstructions] = useState('');
+
+  useEffect(() => {
+    if (productParam) setProductName(decodeURIComponent(productParam));
+  }, [productParam]);
+
+  useEffect(() => {
+    if (!siteAddress && selectedAddress) {
+      setSiteAddress(formatFullAddress(selectedAddress));
+    }
+  }, [selectedAddress, siteAddress]);
+
+  useEffect(() => {
+    if (options.length && !options.includes(productName)) {
+      setProductName(options[0]);
+    }
+  }, [options, productName]);
 
   const submit = useMutation({
     mutationFn: () =>
@@ -42,6 +66,7 @@ export default function QuoteScreen() {
       }),
     onSuccess: () => {
       Alert.alert('Request Sent', 'Our team will contact you within 2 hours.', [
+        { text: 'View Requests', onPress: () => router.replace('/quotes' as never) },
         { text: 'OK', onPress: () => router.back() },
       ]);
     },
@@ -70,7 +95,7 @@ export default function QuoteScreen() {
 
         <Text style={styles.label}>Product</Text>
         <View style={styles.picker}>
-          {PRODUCT_OPTIONS.map((opt) => (
+          {options.map((opt) => (
             <Pressable
               key={opt}
               style={[styles.pickerOpt, productName === opt && styles.pickerOptActive]}

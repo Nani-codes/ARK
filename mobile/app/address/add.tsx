@@ -25,6 +25,7 @@ import {
   parseNominatim,
   type NominatimResult,
 } from '@/lib/addressFormat';
+import { isPincodeServiceableSync, loadServiceablePincodes } from '@/lib/serviceability';
 import { colors, spacing, typography } from '@/lib/theme';
 import type { AddressType } from '@/lib/types';
 import { useAddressStore } from '@/stores/addresses';
@@ -54,6 +55,10 @@ export default function AddAddressScreen() {
   }>();
 
   const isEditing = Boolean(params.id);
+
+  useEffect(() => {
+    void loadServiceablePincodes();
+  }, []);
   const addresses = useAddressStore((s) => s.addresses);
   const addAddress = useAddressStore((s) => s.addAddress);
   const updateAddress = useAddressStore((s) => s.updateAddress);
@@ -164,12 +169,17 @@ export default function AddAddressScreen() {
     if (!form.street.trim()) e.street = 'Required';
     if (!form.city.trim()) e.city = 'Required';
     if (!form.state.trim()) e.state = 'Required';
-    if (!form.pincode.trim() || !/^\d{6}$/.test(form.pincode.trim())) e.pincode = 'Valid 6-digit pincode required';
+    const pin = form.pincode.trim();
+    if (!pin || !/^\d{6}$/.test(pin)) {
+      e.pincode = 'Valid 6-digit pincode required';
+    } else if (!isPincodeServiceableSync(pin)) {
+      e.pincode = 'We currently deliver only in Hyderabad area';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validate()) return;
     const data = {
       label,
@@ -187,15 +197,13 @@ export default function AddAddressScreen() {
     };
 
     if (isEditing && params.id) {
-      updateAddress(params.id, data);
-      router.back(); // back to select
+      await updateAddress(params.id, data);
+      router.back();
     } else {
-      const id = addAddress(data);
-      // Auto-select the new address and sync to location store
+      const id = await addAddress(data);
       selectAddress(id);
       const savedAddr = { ...data, id, isDefault: data.isDefault ?? false };
       setDeliveryAddress(formatFullAddress(savedAddr));
-      // Go back to select screen; user taps "Deliver Here" to confirm
       router.back();
     }
   };

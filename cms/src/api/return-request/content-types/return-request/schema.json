@@ -1,0 +1,37 @@
+{
+  "kind": "collectionType",
+  "collectionName": "return_requests",
+  "info": {
+    "singularName": "return-request",
+    "pluralName": "return-requests",
+    "displayName": "Return Request",
+    "description": "Customer return or exchange request"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "orderNumber": {
+      "type": "string",
+      "required": true
+    },
+    "productName": {
+      "type": "string",
+      "required": true
+    },
+    "reason": {
+      "type": "text",
+      "required": true
+    },
+    "returnStatus": {
+      "type": "enumeration",
+      "enum": ["new", "approved", "rejected", "completed"],
+      "default": "new"
+    }
+  }
+}

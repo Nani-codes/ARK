@@ -12,12 +12,13 @@ function TabIcon({
   focused: boolean;
 }) {
   return (
-    <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+    <View style={styles.iconContainer}>
       <MaterialIcons
         name={name}
-        size={24}
-        color={focused ? colors.onSecondary : colors.onSurfaceVariant}
+        size={26}
+        color={focused ? colors.secondary : colors.iconMuted}
       />
+      {focused ? <View style={styles.activeIndicator} /> : null}
     </View>
   );
 }
@@ -28,10 +29,14 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: colors.onSecondary,
-        tabBarInactiveTintColor: colors.onSurfaceVariant,
-        tabBarLabelStyle: typography.labelMd,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.iconMuted,
+        tabBarLabelStyle: styles.tabLabel,
         tabBarShowLabel: true,
+        tabBarHideOnKeyboard: true,
+        ...(Platform.OS === 'web'
+          ? { tabBarPressColor: colors.surfaceContainerLow }
+          : {}),
       }}>
       <Tabs.Screen
         name="index"
@@ -72,13 +77,31 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopColor: colors.outlineVariant,
     borderTopWidth: 1,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 -2px 8px rgba(0, 10, 30, 0.08)',
+      },
+      default: {
+        elevation: 8,
+      },
+    }),
   },
-  iconWrap: {
-    paddingHorizontal: 20,
-    paddingVertical: 4,
-    borderRadius: 999,
+  tabLabel: {
+    ...typography.labelMd,
+    fontWeight: '600',
+    marginTop: 2,
   },
-  iconWrapActive: {
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 32,
+    minWidth: 48,
+  },
+  activeIndicator: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: colors.secondary,
+    marginTop: 4,
   },
 });

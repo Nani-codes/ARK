@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -18,10 +18,17 @@ import { resolveCurrentLocation } from '@/lib/resolveLocation';
 import { colors, spacing, typography } from '@/lib/theme';
 import type { SavedAddress } from '@/lib/types';
 import { useAddressStore } from '@/stores/addresses';
+import { useAuthStore } from '@/stores/auth';
 import { useLocationStore } from '@/stores/location';
 
 export default function AddressSelectScreen() {
+  const token = useAuthStore((s) => s.token);
+  const syncFromCloud = useAddressStore((s) => s.syncFromCloud);
   const addresses = useAddressStore((s) => s.addresses);
+
+  useEffect(() => {
+    void syncFromCloud(!!token);
+  }, [token, syncFromCloud]);
   const committedId = useAddressStore((s) => s.selectedId);
   const selectAddress = useAddressStore((s) => s.selectAddress);
   const removeAddress = useAddressStore((s) => s.removeAddress);

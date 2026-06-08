@@ -30,10 +30,17 @@ export type Product = {
   description?: string;
   inStock: boolean;
   featured?: boolean;
+  onDeal?: boolean;
+  dealPrice?: number | null;
+  bestSeller?: boolean;
+  authenticityVerified?: boolean;
+  priceUnitLabel?: string;
   variantOptionName?: string;
   variants?: ProductVariant[];
   replacementDays?: number;
   bulkPricingEnabled?: boolean;
+  brand?: string;
+  tags?: string[];
   specs?: ProductSpec[];
   image?: StrapiMedia | null;
   category?: Category | null;
@@ -47,18 +54,31 @@ export type StrapiMedia = {
 export type OrderItem = {
   productName: string;
   productDocumentId?: string;
+  variantId?: string;
+  variantLabel?: string;
+  unit?: string;
   quantity: number;
   unitPrice: number;
   lineTotal: number;
 };
 
+export type DeliverySlot = 'asap' | 'two_hour' | 'next_day';
+
 export type Order = {
   id: number;
   documentId: string;
   orderNumber: string;
-  orderStatus: 'pending' | 'confirmed' | 'out_for_delivery' | 'delivered';
-  paymentMethod: 'neft' | 'cod';
+  orderStatus: 'pending' | 'confirmed' | 'out_for_delivery' | 'delivered' | 'cancelled';
+  paymentMethod: 'neft' | 'cod' | 'online';
+  paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded';
   deliveryAddress: string;
+  deliveryFee?: number;
+  deliverySlot?: DeliverySlot;
+  estimatedDeliveryAt?: string;
+  cancelUntil?: string;
+  pincode?: string;
+  gstin?: string;
+  businessName?: string;
   items: OrderItem[];
   subtotal: number;
   taxes: number;
@@ -77,6 +97,15 @@ export type QuoteRequest = {
   createdAt: string;
 };
 
+export type ProfessionType =
+  | 'contractor'
+  | 'architect'
+  | 'interior_designer'
+  | 'electrician'
+  | 'plumber'
+  | 'painter'
+  | 'other';
+
 export type AuthUser = {
   id: number;
   username?: string;
@@ -84,6 +113,20 @@ export type AuthUser = {
   phone?: string;
   displayName?: string;
   contractorId?: string;
+  isProfessional?: boolean;
+  listedAsProfessional?: boolean;
+  professionType?: ProfessionType | null;
+  professionalBio?: string | null;
+  onboardingComplete?: boolean;
+};
+
+export type ProfessionalProfile = {
+  id: number;
+  displayName: string;
+  contractorId?: string;
+  phone?: string;
+  professionType: ProfessionType;
+  professionalBio?: string | null;
 };
 
 export type StrapiListResponse<T> = {
@@ -99,6 +142,7 @@ export type AddressType = 'home' | 'work' | 'other';
 
 export type SavedAddress = {
   id: string;
+  documentId?: string;
   label: AddressType;
   flat: string;
   building?: string;
@@ -112,4 +156,26 @@ export type SavedAddress = {
   lng?: number;
   isDefault: boolean;
   lastUsedAt?: string;
+};
+
+export type AppConfig = {
+  promoTitle: string;
+  promoSubtitle: string;
+  promoCtaLabel: string;
+  promoCtaLink?: string;
+  whatsappNumber?: string;
+  supportPhone?: string;
+  operatingHoursStart?: number;
+  operatingHoursEnd?: number;
+  faqs?: Array<{ q: string; a: string }>;
+};
+
+export type ReturnRequest = {
+  id: number;
+  documentId: string;
+  orderNumber: string;
+  productName: string;
+  reason: string;
+  returnStatus: 'new' | 'approved' | 'rejected' | 'completed';
+  createdAt: string;
 };

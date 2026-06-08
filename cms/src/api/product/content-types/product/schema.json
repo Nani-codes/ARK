@@ -77,6 +77,30 @@
     "bulkPricingEnabled": {
       "type": "boolean",
       "default": false
+    },
+    "brand": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "json"
+    },
+    "onDeal": {
+      "type": "boolean",
+      "default": false
+    },
+    "dealPrice": {
+      "type": "decimal"
+    },
+    "bestSeller": {
+      "type": "boolean",
+      "default": false
+    },
+    "authenticityVerified": {
+      "type": "boolean",
+      "default": false
+    },
+    "priceUnitLabel": {
+      "type": "string"
     }
   }
 }

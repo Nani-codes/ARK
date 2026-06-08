@@ -1,0 +1,31 @@
+{
+  "kind": "collectionType",
+  "collectionName": "serviceable_pincodes",
+  "info": {
+    "singularName": "serviceable-pincode",
+    "pluralName": "serviceable-pincodes",
+    "displayName": "Serviceable Pincode",
+    "description": "Delivery serviceable pincodes"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "pincode": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "city": {
+      "type": "string",
+      "default": "Hyderabad"
+    },
+    "zone": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

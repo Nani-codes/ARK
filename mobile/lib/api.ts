@@ -1,11 +1,18 @@
 import { normalizeOrder } from './normalizeOrder';
 import { normalizeProduct } from './normalizeProduct';
+import { normalizeQuote } from './normalizeQuote';
 import { strapiFetch } from './strapi';
 import type {
+  AppConfig,
+  AuthUser,
   Category,
   Order,
   Product,
+  ProfessionalProfile,
+  ProfessionType,
   QuoteRequest,
+  ReturnRequest,
+  SavedAddress,
   StrapiListResponse,
   StrapiSingleResponse,
 } from './types';
@@ -13,16 +20,20 @@ import type {
 const PRODUCT_POPULATE =
   'populate[image]=true&populate[category]=true&populate[variants]=true&populate[specs]=true';
 
-export function fetchCategories() {
-  return strapiFetch<StrapiListResponse<Category>>(
-    '/api/categories?sort=sortOrder:asc'
-  );
-}
-
-export async function fetchProducts(params?: {
+export type ProductSearchParams = {
+  q?: string;
   categorySlug?: string;
   featured?: boolean;
-}) {
+  onDeal?: boolean;
+  bestSeller?: boolean;
+  inStock?: boolean;
+  brand?: string;
+  sort?: 'name:asc' | 'name:desc' | 'price:asc' | 'price:desc';
+  page?: number;
+  pageSize?: number;
+};
+
+function buildProductQuery(params?: ProductSearchParams) {
   const search = new URLSearchParams(PRODUCT_POPULATE);
   if (params?.categorySlug) {
     search.set('filters[category][slug][$eq]', params.categorySlug);
@@ -30,6 +41,36 @@ export async function fetchProducts(params?: {
   if (params?.featured) {
     search.set('filters[featured][$eq]', 'true');
   }
+  if (params?.onDeal) {
+    search.set('filters[onDeal][$eq]', 'true');
+  }
+  if (params?.bestSeller) {
+    search.set('filters[bestSeller][$eq]', 'true');
+  }
+  if (params?.inStock) {
+    search.set('filters[inStock][$eq]', 'true');
+  }
+  if (params?.brand) {
+    search.set('filters[brand][$eq]', params.brand);
+  }
+  if (params?.q?.trim()) {
+    search.set('filters[name][$containsi]', params.q.trim());
+  }
+  const sort = params?.sort ?? 'name:asc';
+  search.set('sort', sort);
+  search.set('pagination[page]', String(params?.page ?? 1));
+  search.set('pagination[pageSize]', String(params?.pageSize ?? 25));
+  return search;
+}
+
+export function fetchCategories() {
+  return strapiFetch<StrapiListResponse<Category>>(
+    '/api/categories?sort=sortOrder:asc'
+  );
+}
+
+export async function fetchProducts(params?: ProductSearchParams) {
+  const search = buildProductQuery(params);
   const res = await strapiFetch<StrapiListResponse<Product>>(`/api/products?${search}`);
   return { ...res, data: res.data.map(normalizeProduct) };
 }
@@ -41,13 +82,34 @@ export async function fetchProduct(documentId: string) {
   return { ...res, data: normalizeProduct(res.data) };
 }
 
+export async function fetchAppConfig() {
+  const res = await strapiFetch<StrapiSingleResponse<AppConfig>>('/api/app-config');
+  return res;
+}
+
+export async function fetchServiceablePincodes() {
+  return strapiFetch<StrapiListResponse<{ pincode: string; city: string; active: boolean }>>(
+    '/api/serviceable-pincodes?pagination[pageSize]=200&filters[active][$eq]=true'
+  );
+}
+
 export function createOrder(payload: {
   orderStatus: string;
   paymentMethod: string;
   deliveryAddress: string;
+  deliverySlot?: string;
+  deliveryFee?: number;
+  pincode?: string;
+  gstin?: string;
+  businessName?: string;
+  neftProofUrl?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
   items: Array<{
     productName: string;
     productDocumentId?: string;
+    variantId?: string;
+    variantLabel?: string;
     quantity: number;
     unitPrice: number;
     lineTotal: number;
@@ -60,6 +122,14 @@ export function createOrder(payload: {
     method: 'POST',
     auth: true,
     body: { data: payload },
+  }).then((res) => ({ ...res, data: normalizeOrder(res.data) }));
+}
+
+export function cancelOrder(documentId: string) {
+  return strapiFetch<StrapiSingleResponse<Order>>(`/api/orders/${documentId}`, {
+    method: 'PUT',
+    auth: true,
+    body: { data: { orderStatus: 'cancelled' } },
   }).then((res) => ({ ...res, data: normalizeOrder(res.data) }));
 }
 
@@ -90,5 +160,84 @@ export function createQuoteRequest(payload: {
     method: 'POST',
     auth: true,
     body: { data: payload },
+  }).then((res) => ({ ...res, data: normalizeQuote(res.data) }));
+}
+
+export async function fetchQuoteRequests() {
+  const res = await strapiFetch<StrapiListResponse<QuoteRequest>>(
+    '/api/quote-requests?sort=createdAt:desc',
+    { auth: true }
+  );
+  return { ...res, data: res.data.map(normalizeQuote) };
+}
+
+export async function fetchCloudAddresses() {
+  return strapiFetch<StrapiListResponse<SavedAddress & { documentId: string }>>(
+    '/api/addresses?sort=updatedAt:desc',
+    { auth: true }
+  );
+}
+
+export function createCloudAddress(payload: Omit<SavedAddress, 'id' | 'lastUsedAt'>) {
+  return strapiFetch<StrapiSingleResponse<SavedAddress & { documentId: string }>>('/api/addresses', {
+    method: 'POST',
+    auth: true,
+    body: { data: payload },
   });
+}
+
+export function updateCloudAddress(
+  documentId: string,
+  payload: Partial<Omit<SavedAddress, 'id' | 'lastUsedAt'>>
+) {
+  return strapiFetch<StrapiSingleResponse<SavedAddress & { documentId: string }>>(
+    `/api/addresses/${documentId}`,
+    { method: 'PUT', auth: true, body: { data: payload } }
+  );
+}
+
+export function deleteCloudAddress(documentId: string) {
+  return strapiFetch(`/api/addresses/${documentId}`, { method: 'DELETE', auth: true });
+}
+
+export function createReturnRequest(payload: {
+  orderNumber: string;
+  productName: string;
+  reason: string;
+}) {
+  return strapiFetch<StrapiSingleResponse<ReturnRequest>>('/api/return-requests', {
+    method: 'POST',
+    auth: true,
+    body: { data: payload },
+  });
+}
+
+export async function fetchReturnRequests() {
+  return strapiFetch<StrapiListResponse<ReturnRequest>>(
+    '/api/return-requests?sort=createdAt:desc',
+    { auth: true }
+  );
+}
+
+export async function fetchMyProfile() {
+  return strapiFetch<{ user: AuthUser }>('/api/user-profile/me', { auth: true });
+}
+
+export function updateMyProfile(payload: {
+  isProfessional?: boolean;
+  listedAsProfessional?: boolean;
+  professionType?: ProfessionType | null;
+  professionalBio?: string | null;
+  displayName?: string;
+  onboardingComplete?: boolean;
+}) {
+  return strapiFetch<{ user: AuthUser }>('/api/user-profile/me', {
+    method: 'PUT',
+    auth: true,
+    body: payload,
+  });
+}
+
+export async function fetchProfessionals() {
+  return strapiFetch<{ data: ProfessionalProfile[] }>('/api/user-profile/professionals');
 }

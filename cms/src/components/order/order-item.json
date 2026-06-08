@@ -13,6 +13,15 @@
     "productDocumentId": {
       "type": "string"
     },
+    "variantId": {
+      "type": "string"
+    },
+    "variantLabel": {
+      "type": "string"
+    },
+    "unit": {
+      "type": "string"
+    },
     "quantity": {
       "type": "integer",
       "required": true,

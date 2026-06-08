@@ -24,8 +24,12 @@ export default function VerifyScreen() {
     setError('');
     setLoading(true);
     try {
-      await login(phone, otp);
-      router.replace('/(tabs)');
+      const user = await login(phone, otp);
+      if (user.onboardingComplete === false) {
+        router.replace('/(auth)/professional-setup');
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Verification failed');
     } finally {

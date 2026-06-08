@@ -65,7 +65,15 @@ export default function RootLayout() {
         <Stack.Screen name="checkout" />
         <Stack.Screen name="order-success" />
         <Stack.Screen name="order/[id]" />
+        <Stack.Screen name="search" />
         <Stack.Screen name="quote" />
+        <Stack.Screen name="quotes/index" />
+        <Stack.Screen name="profile/gst" />
+        <Stack.Screen name="profile/payments" />
+        <Stack.Screen name="profile/support" />
+        <Stack.Screen name="profile/professional" />
+        <Stack.Screen name="professionals/index" />
+        <Stack.Screen name="returns/request" />
         <Stack.Screen name="address/select" />
         <Stack.Screen name="address/add" />
       </Stack>

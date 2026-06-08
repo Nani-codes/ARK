@@ -1,0 +1,64 @@
+{
+  "kind": "collectionType",
+  "collectionName": "addresses",
+  "info": {
+    "singularName": "address",
+    "pluralName": "addresses",
+    "displayName": "Address",
+    "description": "Customer saved delivery address"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "label": {
+      "type": "enumeration",
+      "enum": ["home", "work", "other"],
+      "default": "home"
+    },
+    "flat": {
+      "type": "string",
+      "required": true
+    },
+    "building": {
+      "type": "string"
+    },
+    "street": {
+      "type": "string",
+      "required": true
+    },
+    "landmark": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string",
+      "required": true
+    },
+    "state": {
+      "type": "string",
+      "required": true
+    },
+    "pincode": {
+      "type": "string",
+      "required": true
+    },
+    "instructions": {
+      "type": "text"
+    },
+    "lat": {
+      "type": "float"
+    },
+    "lng": {
+      "type": "float"
+    },
+    "isDefault": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

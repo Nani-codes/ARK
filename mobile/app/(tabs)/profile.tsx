@@ -1,23 +1,39 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
+import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { fetchAppConfig } from '@/lib/api';
+import { professionLabel } from '@/lib/professions';
 import { brand, colors, spacing, typography } from '@/lib/theme';
 import { useAuthStore } from '@/stores/auth';
 
 const MENU_ITEMS = [
   { icon: 'receipt-long' as const, label: 'My Orders', href: '/(tabs)/orders' },
-  { icon: 'description' as const, label: 'Bulk Quote Requests', href: '/quote' },
-  { icon: 'location-on' as const, label: 'Saved Addresses', href: null },
-  { icon: 'business' as const, label: 'Manage GST Details', href: null },
-  { icon: 'payments' as const, label: 'Payment Methods', href: null },
+  { icon: 'description' as const, label: 'My Quote Requests', href: '/quotes' },
+  { icon: 'add-circle-outline' as const, label: 'Request Bulk Quote', href: '/quote' },
+  { icon: 'location-on' as const, label: 'Saved Addresses', href: '/address/select' },
+  { icon: 'business' as const, label: 'Manage GST Details', href: '/profile/gst' },
+  { icon: 'payments' as const, label: 'Payment Methods', href: '/profile/payments' },
+  { icon: 'help-outline' as const, label: 'Help & Support', href: '/profile/support' },
+  { icon: 'groups' as const, label: 'Find Professionals', href: '/professionals' },
+  { icon: 'engineering' as const, label: 'Professional Profile', href: '/profile/professional' },
 ];
 
 export default function ProfileScreen() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const { data: configData } = useQuery({ queryKey: ['app-config'], queryFn: fetchAppConfig });
+  const whatsapp = configData?.data?.whatsappNumber ?? '919876543210';
+
+  const openWhatsApp = () => {
+    Linking.openURL(
+      `https://wa.me/${whatsapp}?text=${encodeURIComponent('Hi ARK, I need assistance.')}`
+    );
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -38,8 +54,17 @@ export default function ProfileScreen() {
           <View style={styles.profileInfo}>
             <Text style={styles.name}>{user?.displayName ?? 'Contractor'}</Text>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>PREMIUM MEMBER</Text>
+              <Text style={styles.badgeText}>
+                {user?.isProfessional
+                  ? user.listedAsProfessional
+                    ? 'LISTED PRO'
+                    : 'PROFESSIONAL'
+                  : 'PREMIUM MEMBER'}
+              </Text>
             </View>
+            {user?.isProfessional && user.professionType ? (
+              <Text style={styles.trade}>{professionLabel(user.professionType)}</Text>
+            ) : null}
             <Text style={styles.contractorId}>
               Contractor ID: {user?.contractorId ?? '—'}
             </Text>
@@ -55,7 +80,7 @@ export default function ProfileScreen() {
             <Pressable
               key={item.label}
               style={[styles.menuItem, i > 0 && styles.menuBorder]}
-              onPress={() => item.href && router.push(item.href as '/quote')}>
+              onPress={() => item.href && router.push(item.href as never)}>
               <View style={styles.menuLeft}>
                 <View style={styles.menuIcon}>
                   <MaterialIcons name={item.icon} size={22} color={colors.primaryContainer} />
@@ -66,6 +91,11 @@ export default function ProfileScreen() {
             </Pressable>
           ))}
         </View>
+
+        <Pressable style={styles.whatsappBtn} onPress={openWhatsApp}>
+          <MaterialIcons name="chat" size={22} color="#25D366" />
+          <Text style={styles.whatsappText}>Chat on WhatsApp</Text>
+        </Pressable>
 
         <PrimaryButton
           label="Logout"
@@ -124,6 +154,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.unit1,
   },
   badgeText: { ...typography.labelMd, color: colors.onSecondary, fontWeight: '700' },
+  trade: { ...typography.labelMd, color: brand.gold, marginTop: spacing.unit1 },
   contractorId: { ...typography.bodyMd, color: 'rgba(255,255,255,0.7)', marginTop: spacing.unit1 },
   phone: { ...typography.bodyMd, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
   sectionLabel: {
@@ -159,6 +190,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   menuLabel: { ...typography.labelLg, color: colors.onSurface },
+  whatsappBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.unit2,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#25D366',
+    padding: spacing.unit4,
+    marginBottom: spacing.unit3,
+  },
+  whatsappText: { ...typography.labelLg, color: '#128C7E', fontWeight: '700' },
   logout: { marginTop: spacing.unit4 },
   version: {
     ...typography.labelMd,

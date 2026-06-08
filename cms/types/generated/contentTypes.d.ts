@@ -440,6 +440,110 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiAddressAddress extends Struct.CollectionTypeSchema {
+  collectionName: 'addresses';
+  info: {
+    description: 'Customer saved delivery address';
+    displayName: 'Address';
+    pluralName: 'addresses';
+    singularName: 'address';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    building: Schema.Attribute.String;
+    city: Schema.Attribute.String & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    flat: Schema.Attribute.String & Schema.Attribute.Required;
+    instructions: Schema.Attribute.Text;
+    isDefault: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    label: Schema.Attribute.Enumeration<['home', 'work', 'other']> &
+      Schema.Attribute.DefaultTo<'home'>;
+    landmark: Schema.Attribute.String;
+    lat: Schema.Attribute.Float;
+    lng: Schema.Attribute.Float;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::address.address'
+    > &
+      Schema.Attribute.Private;
+    pincode: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    state: Schema.Attribute.String & Schema.Attribute.Required;
+    street: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
+export interface ApiAppConfigAppConfig extends Struct.SingleTypeSchema {
+  collectionName: 'app_configs';
+  info: {
+    description: 'Mobile app configuration and promo content';
+    displayName: 'App Config';
+    pluralName: 'app-configs';
+    singularName: 'app-config';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    faqs: Schema.Attribute.JSON;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::app-config.app-config'
+    > &
+      Schema.Attribute.Private;
+    operatingHoursEnd: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 24;
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<20>;
+    operatingHoursStart: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 23;
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<8>;
+    promoCtaLabel: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'Shop Now'>;
+    promoCtaLink: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'/search'>;
+    promoSubtitle: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'Hyderabad \u00B7 60\u2013120 min delivery'>;
+    promoTitle: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'Free delivery on orders above \u20B92,999'>;
+    publishedAt: Schema.Attribute.DateTime;
+    supportPhone: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'18001234567'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    whatsappNumber: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'919876543210'>;
+  };
+}
+
 export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   collectionName: 'categories';
   info: {
@@ -486,24 +590,43 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    assignedTo: Schema.Attribute.String;
+    businessName: Schema.Attribute.String;
+    cancelUntil: Schema.Attribute.DateTime;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     deliveryAddress: Schema.Attribute.Text & Schema.Attribute.Required;
+    deliveryFee: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    deliverySlot: Schema.Attribute.Enumeration<
+      ['asap', 'two_hour', 'next_day']
+    > &
+      Schema.Attribute.DefaultTo<'asap'>;
+    estimatedDeliveryAt: Schema.Attribute.DateTime;
+    gstin: Schema.Attribute.String;
+    internalNotes: Schema.Attribute.Text;
     items: Schema.Attribute.Component<'order.order-item', true>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::order.order'> &
       Schema.Attribute.Private;
+    neftProofUrl: Schema.Attribute.String;
     orderNumber: Schema.Attribute.String & Schema.Attribute.Unique;
     orderStatus: Schema.Attribute.Enumeration<
-      ['pending', 'confirmed', 'out_for_delivery', 'delivered']
+      ['pending', 'confirmed', 'out_for_delivery', 'delivered', 'cancelled']
     > &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'pending'>;
-    paymentMethod: Schema.Attribute.Enumeration<['neft', 'cod']> &
+    paymentMethod: Schema.Attribute.Enumeration<['neft', 'cod', 'online']> &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'cod'>;
+    paymentStatus: Schema.Attribute.Enumeration<
+      ['pending', 'paid', 'failed', 'refunded']
+    > &
+      Schema.Attribute.DefaultTo<'pending'>;
+    pincode: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
+    razorpayOrderId: Schema.Attribute.String;
+    razorpayPaymentId: Schema.Attribute.String;
     subtotal: Schema.Attribute.Decimal & Schema.Attribute.Required;
     taxes: Schema.Attribute.Decimal & Schema.Attribute.Required;
     total: Schema.Attribute.Decimal & Schema.Attribute.Required;
@@ -529,6 +652,10 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    authenticityVerified: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    bestSeller: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    brand: Schema.Attribute.String;
     bulkPricingEnabled: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<false>;
     category: Schema.Attribute.Relation<'manyToOne', 'api::category.category'>;
@@ -536,6 +663,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    dealPrice: Schema.Attribute.Decimal;
     description: Schema.Attribute.Text;
     featured: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     image: Schema.Attribute.Media<'images'>;
@@ -547,7 +675,9 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     name: Schema.Attribute.String & Schema.Attribute.Required;
+    onDeal: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     price: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    priceUnitLabel: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     replacementDays: Schema.Attribute.Integer &
       Schema.Attribute.SetMinMax<
@@ -559,6 +689,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       Schema.Attribute.DefaultTo<7>;
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
     specs: Schema.Attribute.Component<'product.product-spec', true>;
+    tags: Schema.Attribute.JSON;
     unit: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'Piece'>;
@@ -609,6 +740,81 @@ export interface ApiQuoteRequestQuoteRequest
       'manyToOne',
       'plugin::users-permissions.user'
     >;
+  };
+}
+
+export interface ApiReturnRequestReturnRequest
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'return_requests';
+  info: {
+    description: 'Customer return or exchange request';
+    displayName: 'Return Request';
+    pluralName: 'return-requests';
+    singularName: 'return-request';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::return-request.return-request'
+    > &
+      Schema.Attribute.Private;
+    orderNumber: Schema.Attribute.String & Schema.Attribute.Required;
+    productName: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    reason: Schema.Attribute.Text & Schema.Attribute.Required;
+    returnStatus: Schema.Attribute.Enumeration<
+      ['new', 'approved', 'rejected', 'completed']
+    > &
+      Schema.Attribute.DefaultTo<'new'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
+export interface ApiServiceablePincodeServiceablePincode
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'serviceable_pincodes';
+  info: {
+    description: 'Delivery serviceable pincodes';
+    displayName: 'Serviceable Pincode';
+    pluralName: 'serviceable-pincodes';
+    singularName: 'serviceable-pincode';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    city: Schema.Attribute.String & Schema.Attribute.DefaultTo<'Hyderabad'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::serviceable-pincode.serviceable-pincode'
+    > &
+      Schema.Attribute.Private;
+    pincode: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    zone: Schema.Attribute.String;
   };
 }
 
@@ -1074,25 +1280,46 @@ export interface PluginUsersPermissionsUser
     blocked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     confirmationToken: Schema.Attribute.String & Schema.Attribute.Private;
     confirmed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    contractorId: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    displayName: Schema.Attribute.String;
     email: Schema.Attribute.Email &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
+    isProfessional: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    listedAsProfessional: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'plugin::users-permissions.user'
     > &
       Schema.Attribute.Private;
+    onboardingComplete: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
     password: Schema.Attribute.Password &
       Schema.Attribute.Private &
       Schema.Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
+    phone: Schema.Attribute.String;
+    professionalBio: Schema.Attribute.Text;
+    professionType: Schema.Attribute.Enumeration<
+      [
+        'contractor',
+        'architect',
+        'interior_designer',
+        'electrician',
+        'plumber',
+        'painter',
+        'other',
+      ]
+    >;
     provider: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     resetPasswordToken: Schema.Attribute.String & Schema.Attribute.Private;
@@ -1123,10 +1350,14 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::address.address': ApiAddressAddress;
+      'api::app-config.app-config': ApiAppConfigAppConfig;
       'api::category.category': ApiCategoryCategory;
       'api::order.order': ApiOrderOrder;
       'api::product.product': ApiProductProduct;
       'api::quote-request.quote-request': ApiQuoteRequestQuoteRequest;
+      'api::return-request.return-request': ApiReturnRequestReturnRequest;
+      'api::serviceable-pincode.serviceable-pincode': ApiServiceablePincodeServiceablePincode;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;
