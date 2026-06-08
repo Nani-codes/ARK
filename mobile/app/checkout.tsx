@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -8,16 +8,11 @@ import { AddressCard } from '@/components/AddressCard';
 import { AppHeader } from '@/components/AppHeader';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeader } from '@/components/SectionHeader';
-import { createOrder, fetchAppConfig } from '@/lib/api';
+import { createOrder } from '@/lib/api';
 import { formatFullAddress } from '@/lib/addressFormat';
 import { NEFT_BANK_DETAILS } from '@/lib/orderDisplay';
 import { processOnlinePayment } from '@/lib/razorpay';
-import {
-  COD_MAX_TOTAL,
-  deliveryFeeLabel,
-  GST_LABEL,
-  isWithinOperatingHours,
-} from '@/lib/pricing';
+import { COD_MAX_TOTAL, deliveryFeeLabel, GST_LABEL } from '@/lib/pricing';
 import { isPincodeServiceable, loadServiceablePincodes } from '@/lib/serviceability';
 import { colors, spacing, typography } from '@/lib/theme';
 import type { DeliverySlot } from '@/lib/types';
@@ -56,21 +51,11 @@ export default function CheckoutScreen() {
   const [deliverySlot, setDeliverySlot] = useState<DeliverySlot>('asap');
   const queryClient = useQueryClient();
 
-  const { data: configData } = useQuery({
-    queryKey: ['app-config'],
-    queryFn: fetchAppConfig,
-  });
-  const config = configData?.data;
-
   useEffect(() => {
     void loadServiceablePincodes();
   }, []);
 
   const codDisabled = total > COD_MAX_TOTAL;
-  const hoursOk = isWithinOperatingHours(
-    config?.operatingHoursStart ?? 8,
-    config?.operatingHoursEnd ?? 20
-  );
 
   const placeOrder = useMutation({
     mutationFn: async () => {
@@ -118,14 +103,6 @@ export default function CheckoutScreen() {
 
   const handlePlaceOrder = async () => {
     if (!selectedAddress) return;
-
-    if (!hoursOk) {
-      Alert.alert(
-        'Outside operating hours',
-        `Orders accepted ${config?.operatingHoursStart ?? 8}:00 – ${config?.operatingHoursEnd ?? 20}:00 IST daily.`
-      );
-      return;
-    }
 
     const serviceable = await isPincodeServiceable(selectedAddress.pincode);
     if (!serviceable) {
@@ -295,11 +272,8 @@ export default function CheckoutScreen() {
           label="Place Order"
           onPress={handlePlaceOrder}
           loading={placeOrder.isPending}
-          disabled={!selectedAddress || !hoursOk}
+          disabled={!selectedAddress}
         />
-        {!hoursOk ? (
-          <Text style={styles.addressHint}>Checkout opens at {config?.operatingHoursStart ?? 8} AM IST</Text>
-        ) : null}
         {!selectedAddress ? (
           <Text style={styles.addressHint}>Please select a delivery address to continue</Text>
         ) : null}

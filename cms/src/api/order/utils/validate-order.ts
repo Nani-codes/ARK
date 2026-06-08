@@ -7,7 +7,6 @@ import {
   calcSubtotal,
   calcTaxes,
   calcTotal,
-  isWithinOperatingHours,
 } from './pricing';
 
 type IncomingItem = {
@@ -143,15 +142,6 @@ export async function validateAndPriceOrder(
     if (!serviceable) {
       throw new errors.ValidationError(`Pincode ${pincode} is not serviceable in Hyderabad yet`);
     }
-  }
-
-  const appConfig = await strapi.db.query('api::app-config.app-config').findOne({});
-  const startHour = appConfig?.operatingHoursStart ?? 8;
-  const endHour = appConfig?.operatingHoursEnd ?? 20;
-  if (!isWithinOperatingHours(startHour, endHour)) {
-    throw new errors.ValidationError(
-      `Orders can only be placed between ${startHour}:00 and ${endHour}:00 IST`
-    );
   }
 
   return { items: validatedItems, subtotal, taxes, deliveryFee, total };
