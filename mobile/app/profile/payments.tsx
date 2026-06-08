@@ -23,7 +23,7 @@ export default function PaymentsScreen() {
           keyboardType="email-address"
         />
         <Text style={styles.hint}>
-          Pay Online (UPI / cards) at checkout via Razorpay. Your saved UPI ID is used for reference.
+          Your UPI ID is saved for reference. Online checkout is coming soon — use COD or NEFT at checkout for now.
         </Text>
 
         <Text style={[styles.section, { marginTop: spacing.unit8 }]}>NEFT / RTGS Bank Details</Text>

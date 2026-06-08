@@ -11,7 +11,6 @@ import { SectionHeader } from '@/components/SectionHeader';
 import { createOrder } from '@/lib/api';
 import { formatFullAddress } from '@/lib/addressFormat';
 import { NEFT_BANK_DETAILS } from '@/lib/orderDisplay';
-import { processOnlinePayment } from '@/lib/razorpay';
 import { COD_MAX_TOTAL, deliveryFeeLabel, GST_LABEL } from '@/lib/pricing';
 import { isPincodeServiceable, loadServiceablePincodes } from '@/lib/serviceability';
 import { colors, spacing, typography } from '@/lib/theme';
@@ -21,7 +20,7 @@ import { useCartStore } from '@/stores/cart';
 import { useGstStore } from '@/stores/gst';
 import { usePaymentsStore } from '@/stores/payments';
 
-type PaymentMethod = 'neft' | 'cod' | 'online';
+type PaymentMethod = 'neft' | 'cod';
 
 const SLOT_OPTIONS: { key: DeliverySlot; label: string; sub: string }[] = [
   { key: 'asap', label: 'ASAP', sub: '60–90 min target' },
@@ -47,7 +46,7 @@ export default function CheckoutScreen() {
   const neftReference = usePaymentsStore((s) => s.neftReference);
   const setNeftReference = usePaymentsStore((s) => s.setNeftReference);
 
-  const [payment, setPayment] = useState<PaymentMethod>('online');
+  const [payment, setPayment] = useState<PaymentMethod>('cod');
   const [deliverySlot, setDeliverySlot] = useState<DeliverySlot>('asap');
   const queryClient = useQueryClient();
 
@@ -58,17 +57,8 @@ export default function CheckoutScreen() {
   const codDisabled = total > COD_MAX_TOTAL;
 
   const placeOrder = useMutation({
-    mutationFn: async () => {
-      let razorpayOrderId: string | undefined;
-      let razorpayPaymentId: string | undefined;
-
-      if (payment === 'online') {
-        const result = await processOnlinePayment(total);
-        razorpayOrderId = result.razorpayOrderId;
-        razorpayPaymentId = result.razorpayPaymentId;
-      }
-
-      return createOrder({
+    mutationFn: () =>
+      createOrder({
         orderStatus: 'pending',
         paymentMethod: payment,
         deliveryAddress: selectedAddress ? formatFullAddress(selectedAddress) : '',
@@ -78,8 +68,6 @@ export default function CheckoutScreen() {
         gstin: gstin || undefined,
         businessName: businessName || undefined,
         neftProofUrl: payment === 'neft' && neftReference ? neftReference : undefined,
-        razorpayOrderId,
-        razorpayPaymentId,
         subtotal,
         taxes,
         total,
@@ -92,8 +80,7 @@ export default function CheckoutScreen() {
           unitPrice: i.unitPrice,
           lineTotal: i.unitPrice * i.quantity,
         })),
-      });
-    },
+      }),
     onSuccess: (res) => {
       clear();
       queryClient.invalidateQueries({ queryKey: ['orders'] });
@@ -169,17 +156,6 @@ export default function CheckoutScreen() {
         ))}
 
         <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>SELECT PAYMENT METHOD</Text>
-
-        <Pressable
-          style={[styles.payOption, payment === 'online' && styles.payOptionActive]}
-          onPress={() => setPayment('online')}>
-          <View style={styles.radio}>{payment === 'online' ? <View style={styles.radioDot} /> : null}</View>
-          <View style={styles.payText}>
-            <Text style={styles.payTitle}>Pay Online (UPI / Cards)</Text>
-            <Text style={styles.paySub}>Secure Razorpay checkout</Text>
-          </View>
-          <MaterialIcons name="credit-card" size={28} color={colors.icon} />
-        </Pressable>
 
         <Pressable
           style={[styles.payOption, payment === 'neft' && styles.payOptionActive]}
