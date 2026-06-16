@@ -1,14 +1,13 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
@@ -22,7 +21,6 @@ import { useAuthStore } from '@/stores/auth';
 import type { Category } from '@/lib/types';
 
 export default function HomeScreen() {
-  const [search, setSearch] = useState('');
   const token = useAuthStore((s) => s.token);
 
   const { data: configData } = useQuery({
@@ -90,6 +88,17 @@ export default function HomeScreen() {
     <ScreenBackground variant="hero" style={styles.container}>
       <AppHeader showLocation variant="home" />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Pressable
+          style={styles.searchWrap}
+          onPress={() => router.push('/search')}
+          accessibilityRole="button"
+          accessibilityLabel="Search catalog">
+          <View style={styles.search}>
+            <MaterialIcons name="search" size={22} color={colors.iconMuted} />
+            <Text style={styles.searchText}>Search cement, steel, tiles...</Text>
+          </View>
+        </Pressable>
+
         {config ? (
           <Pressable
             style={styles.promoStrip}
@@ -108,20 +117,6 @@ export default function HomeScreen() {
           <TrustItem icon="published-with-changes" title="7 Day Replacement" sub="Quality issues" />
           <TrustItem icon="savings" title="5 Crore+ Savings" sub="Unbeatable prices" />
         </View>
-        <Pressable
-          style={styles.searchWrap}
-          onPress={() => router.push(search.trim() ? `/search?q=${encodeURIComponent(search.trim())}` : '/search')}>
-          <MaterialIcons name="search" size={22} color={colors.iconMuted} style={styles.searchIcon} />
-          <TextInput
-            style={styles.search}
-            placeholder="Search cement, steel, tiles..."
-            value={search}
-            onChangeText={setSearch}
-            onSubmitEditing={() => router.push(`/search?q=${encodeURIComponent(search.trim())}`)}
-            returnKeyType="search"
-            placeholderTextColor={colors.onSurfaceVariant}
-          />
-        </Pressable>
 
         <Pressable style={styles.prosCard} onPress={() => router.push('/professionals')}>
           <MaterialIcons name="groups" size={28} color={colors.secondary} />
@@ -292,21 +287,27 @@ const styles = StyleSheet.create({
   trustSub: { fontSize: 10, color: colors.onSurfaceVariant, lineHeight: 12 },
   scroll: { paddingBottom: spacing.unit12 },
   searchWrap: {
-    marginHorizontal: spacing.containerMargin,
-    marginVertical: spacing.unit3,
-    position: 'relative',
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.containerMargin,
+    marginTop: spacing.unit3,
+    marginBottom: spacing.unit2,
   },
-  searchIcon: { position: 'absolute', left: 16, top: 14, zIndex: 1 },
   search: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.unit3,
     backgroundColor: colors.surfaceContainerLow,
     borderWidth: 1,
-    borderColor: colors.outline,
+    borderColor: colors.outlineVariant,
     borderRadius: 8,
     paddingVertical: 12,
-    paddingLeft: 44,
-    paddingRight: 16,
+    paddingHorizontal: 16,
+  },
+  searchText: {
     ...typography.bodyMd,
-    color: colors.onSurface,
+    color: colors.onSurfaceVariant,
   },
   prosCard: {
     flexDirection: 'row',

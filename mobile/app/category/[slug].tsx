@@ -38,9 +38,13 @@ export default function CategoryScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader title={title} showBack showLocation={false} />
+      <AppHeader title={title} showBack showLocation={false} showSearch />
       {brands.length > 1 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.brandRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.brandRow}
+          contentContainerStyle={styles.brandRowContent}>
           <Pressable
             style={[styles.chip, !brand && styles.chipActive]}
             onPress={() => setBrand(null)}>
@@ -79,7 +83,18 @@ export default function CategoryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  brandRow: { paddingHorizontal: spacing.containerMargin, paddingVertical: spacing.unit2, maxHeight: 44 },
+  brandRow: {
+    paddingVertical: spacing.unit2,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+  },
+  brandRowContent: {
+    flexDirection: 'row',
+    gap: spacing.unit2,
+    alignItems: 'center',
+    paddingHorizontal: spacing.containerMargin,
+  },
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -87,14 +102,29 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.outlineVariant,
     backgroundColor: colors.surface,
-    marginRight: spacing.unit2,
   },
   chipActive: { borderColor: colors.secondary, backgroundColor: colors.secondaryContainer },
   chipText: { ...typography.labelMd, color: colors.onSurfaceVariant },
   chipTextActive: { color: colors.primary, fontWeight: '700' },
-  list: { padding: spacing.containerMargin, gap: spacing.unit4, paddingBottom: spacing.unit12 },
+  list: {
+    padding: spacing.containerMargin,
+    gap: spacing.unit4,
+    paddingBottom: spacing.unit12,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+  },
   item: { width: '100%' },
-  emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.unit8, gap: spacing.unit3 },
+  emptyWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.unit8,
+    gap: spacing.unit3,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+  },
   empty: { ...typography.headlineMd, color: colors.onSurfaceVariant, textAlign: 'center' },
   emptySub: { ...typography.bodyMd, color: colors.onSurfaceVariant, textAlign: 'center' },
 });

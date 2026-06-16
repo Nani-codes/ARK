@@ -31,7 +31,7 @@ export default function OrdersScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Order History" showCart={false} />
+      <AppHeader title="Order History" showCart={false} showSearch />
       {!isHydrated || isLoading ? (
         <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
       ) : isError ? (

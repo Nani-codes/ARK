@@ -48,7 +48,7 @@ export default function ProductDetailScreen() {
   if (isLoading || !product || !selectedVariant) {
     return (
       <View style={styles.loading}>
-        <AppHeader showBack showLocation={false} />
+        <AppHeader showBack showLocation={false} showSearch />
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -64,7 +64,7 @@ export default function ProductDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader showBack />
+      <AppHeader showBack showSearch />
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 100 }]}>
         <View style={styles.imageWrap}>

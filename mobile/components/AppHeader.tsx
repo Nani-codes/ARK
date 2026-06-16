@@ -12,6 +12,7 @@ type AppHeaderProps = {
   subtitle?: string;
   showLocation?: boolean;
   showCart?: boolean;
+  showSearch?: boolean;
   showBack?: boolean;
   variant?: 'default' | 'navy' | 'home';
 };
@@ -21,6 +22,7 @@ export function AppHeader({
   subtitle,
   showLocation = false,
   showCart = true,
+  showSearch = false,
   showBack = false,
   variant = 'default',
 }: AppHeaderProps) {
@@ -46,7 +48,15 @@ export function AppHeader({
       ]}>
       <View style={styles.row}>
         {showBack ? (
-          <Pressable onPress={() => router.back()} style={styles.iconBtn}>
+          <Pressable
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/');
+              }
+            }}
+            style={styles.iconBtn}>
             <MaterialIcons name="arrow-back" size={24} color={fg} />
           </Pressable>
         ) : null}
@@ -71,10 +81,17 @@ export function AppHeader({
           </Pressable>
         ) : title ? (
           <Text style={[styles.title, { color: fg }]}>{title}</Text>
-        ) : (
-          <View />
-        )}
+        ) : null}
         <View style={styles.actions}>
+          {showSearch ? (
+            <Pressable
+              onPress={() => router.push('/search')}
+              style={styles.iconBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Search catalog">
+              <MaterialIcons name="search" size={24} color={cartIconColor} />
+            </Pressable>
+          ) : null}
           {showCart ? (
             <Pressable onPress={() => router.push('/cart')} style={styles.iconBtn}>
               <MaterialIcons name="shopping-cart" size={24} color={cartIconColor} />
