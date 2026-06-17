@@ -22,6 +22,7 @@ import { formatInr, getProductDisplayPricing, getProductVariants } from '@/lib/p
 import { mediaUrl } from '@/lib/strapi';
 import { colors, spacing, typography } from '@/lib/theme';
 import type { ProductVariant } from '@/lib/types';
+import { cartLineId, useCartStore } from '@/stores/cart';
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -61,6 +62,37 @@ export default function ProductDetailScreen() {
   const replacementDays = product.replacementDays ?? 7;
   const minVariantPrice = Math.min(...getProductVariants(product).map((v) => v.price));
   const unitLabel = product.priceUnitLabel ?? (product.unit === 'Sq Ft' ? '₹/ft²' : `/${product.unit}`);
+
+  const handleBuyNow = () => {
+    if (!product || !selectedVariant) return;
+
+    const displayName =
+      selectedVariant.id === 'default'
+        ? product.name
+        : `${product.name} (${selectedVariant.label})`;
+
+    const imagePath = product.image?.url;
+    const imageUrl = mediaUrl(imagePath);
+
+    const lineId = cartLineId(product.documentId, selectedVariant.id);
+    const cartQty = useCartStore.getState().items.find((i) => i.lineId === lineId)?.quantity ?? 0;
+    const checkoutQty = cartQty > 0 ? cartQty : 1;
+
+    const item = {
+      lineId,
+      productDocumentId: product.documentId,
+      variantId: selectedVariant.id !== 'default' ? selectedVariant.id : undefined,
+      variantLabel: selectedVariant.id !== 'default' ? selectedVariant.label : undefined,
+      name: displayName,
+      unit: product.unit,
+      unitPrice: Number(selectedVariant.price),
+      quantity: checkoutQty,
+      imageUrl,
+    };
+
+    const itemsParam = encodeURIComponent(JSON.stringify([item]));
+    router.push(`/checkout?buyNow=true&buyNowItems=${itemsParam}`);
+  };
 
   return (
     <View style={styles.container}>
@@ -169,12 +201,22 @@ export default function ProductDetailScreen() {
       </ScrollView>
 
       <View style={[styles.stickyBar, { paddingBottom: insets.bottom + spacing.unit2 }]}>
-        <AddToCartControl
-          product={product}
-          variant={selectedVariant}
-          size="md"
-          style={styles.stickyControl}
-        />
+        <View style={styles.buttonRow}>
+          <AddToCartControl
+            product={product}
+            variant={selectedVariant}
+            size="md"
+            style={styles.stickyControl}
+          />
+          {product.inStock ? (
+            <Pressable
+              style={styles.buyNowBtn}
+              onPress={handleBuyNow}>
+              <MaterialIcons name="flash-on" size={22} color={colors.onPrimary} />
+              <Text style={styles.buyNowLabel}>BUY NOW</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -296,5 +338,26 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -4 },
     elevation: 8,
   },
-  stickyControl: { width: '100%' },
+  stickyControl: { flex: 1 },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: spacing.unit3,
+    width: '100%',
+  },
+  buyNowBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.unit2,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingVertical: spacing.unit4,
+  },
+  buyNowLabel: {
+    ...typography.labelLg,
+    color: colors.onPrimary,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
 });

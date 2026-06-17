@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AddressCard } from '@/components/AddressCard';
@@ -12,7 +12,15 @@ import { SectionHeader } from '@/components/SectionHeader';
 import { createOrder } from '@/lib/api';
 import { formatFullAddress } from '@/lib/addressFormat';
 import { NEFT_BANK_DETAILS } from '@/lib/orderDisplay';
-import { COD_MAX_TOTAL, deliveryFeeLabel, GST_LABEL } from '@/lib/pricing';
+import {
+  calcDeliveryFee,
+  calcSubtotal,
+  calcTaxes,
+  calcTotal,
+  COD_MAX_TOTAL,
+  deliveryFeeLabel,
+  GST_LABEL,
+} from '@/lib/pricing';
 import { isPincodeServiceable, loadServiceablePincodes } from '@/lib/serviceability';
 import { colors, spacing, typography } from '@/lib/theme';
 import type { DeliverySlot } from '@/lib/types';
@@ -30,12 +38,32 @@ const SLOT_OPTIONS: { key: DeliverySlot; label: string; sub: string }[] = [
 ];
 
 export default function CheckoutScreen() {
-  const items = useCartStore((s) => s.items);
-  const subtotal = useCartStore((s) => s.subtotal());
-  const taxes = useCartStore((s) => s.taxes());
-  const deliveryFee = useCartStore((s) => s.deliveryFee());
-  const total = useCartStore((s) => s.total());
+  const { buyNow, buyNowItems: buyNowItemsRaw } = useLocalSearchParams<{ buyNow?: string; buyNowItems?: string }>();
+
+  const buyNowItems = useMemo(() => {
+    if (buyNow === 'true' && buyNowItemsRaw) {
+      try {
+        return JSON.parse(decodeURIComponent(buyNowItemsRaw)) as any[];
+      } catch (e) {
+        console.error('Error parsing buyNowItems:', e);
+        return [];
+      }
+    }
+    return null;
+  }, [buyNow, buyNowItemsRaw]);
+
+  const cartItems = useCartStore((s) => s.items);
+  const cartSubtotal = useCartStore((s) => s.subtotal());
+  const cartTaxes = useCartStore((s) => s.taxes());
+  const cartDeliveryFee = useCartStore((s) => s.deliveryFee());
+  const cartTotal = useCartStore((s) => s.total());
   const clear = useCartStore((s) => s.clear);
+
+  const items = buyNowItems ?? cartItems;
+  const subtotal = buyNowItems ? calcSubtotal(buyNowItems) : cartSubtotal;
+  const taxes = buyNowItems ? calcTaxes(subtotal) : cartTaxes;
+  const deliveryFee = buyNowItems ? calcDeliveryFee(subtotal) : cartDeliveryFee;
+  const total = buyNowItems ? calcTotal(subtotal, taxes, deliveryFee) : cartTotal;
 
   const selectedAddress = useAddressStore((s) => {
     if (s.selectedId) return s.addresses.find((a) => a.id === s.selectedId) ?? null;
@@ -103,7 +131,9 @@ export default function CheckoutScreen() {
         })),
       }),
     onSuccess: (res) => {
-      clear();
+      if (buyNow !== 'true') {
+        clear();
+      }
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       router.replace({ pathname: '/order-success', params: { orderNumber: res.data.orderNumber } });
     },
@@ -130,12 +160,16 @@ export default function CheckoutScreen() {
   };
 
   useEffect(() => {
-    if (items.length === 0) {
+    if (buyNow === 'true') {
+      if (!buyNowItems || buyNowItems.length === 0) {
+        router.replace('/cart');
+      }
+    } else if (cartItems.length === 0) {
       router.replace('/cart');
     }
-  }, [items.length]);
+  }, [cartItems.length, buyNow, buyNowItems]);
 
-  if (items.length === 0) {
+  if (buyNow === 'true' ? !buyNowItems || buyNowItems.length === 0 : cartItems.length === 0) {
     return null;
   }
 
