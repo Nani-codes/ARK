@@ -42,7 +42,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Profile" showLocation={false} variant="navy" />
+      <AppHeader title="Profile" showLocation={false} variant="navy" showSearch />
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.profileCard}>
           <View style={styles.avatar}>

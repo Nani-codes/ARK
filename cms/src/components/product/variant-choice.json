@@ -1,0 +1,19 @@
+{
+  "collectionName": "components_product_variant_choices",
+  "info": {
+    "displayName": "Choice value",
+    "description": "Filled automatically when combinations are built. You usually only edit the price above.",
+    "icon": "check"
+  },
+  "options": {},
+  "attributes": {
+    "groupName": {
+      "type": "string",
+      "required": true
+    },
+    "choice": {
+      "type": "string",
+      "required": true
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # Editing products in Strapi (non-technical guide)
 
-Products no longer use JSON. Everything is filled in with **forms and repeatable blocks**.
+Products use **simple forms** — no JSON or coding required.
 
 ## Open a product
 
@@ -12,46 +12,87 @@ Products no longer use JSON. Everything is filled in with **forms and repeatable
 | Field | What to enter |
 |-------|----------------|
 | **Name** | Product title shown in the app |
-| **Price** | Default sale price (used if you add no size options) |
+| **Price** | Default price (also used as the starting price when combinations are auto-built) |
 | **Compare at price** | Old / MRP price (optional — shows discount %) |
-| **Unit** | e.g. Piece, Bag, Ton |
-| **Variant option name** | Label above sizes, e.g. `Size`, `Pack`, `Color` |
+| **Unit** | e.g. Piece, Bag, Sq Ft |
 | **Replacement days** | Usually `7` for “7 Day Replacement” |
-| **Bulk pricing enabled** | Turn on to show bulk quote CTA in the app |
+| **Bulk pricing enabled** | Turn on to show bulk quote button in the app |
 
-## Size / pack options (variants)
+---
 
-Use the **“Size / pack option”** block — click **“Add an entry”** for each size or pack.
+## Simple products (one choice only — e.g. different bag sizes)
 
-For each row:
+Use this when shoppers pick **one thing** like “10 Bags” or `1/2 inch`.
+
+1. **Variant option name** — label shown in the app, e.g. `Size`, `Pack`, `Length`
+2. Under **Price option**, click **Add an entry** for each choice
+3. For each row fill in:
+   - **Label** — e.g. `10 Bags` or `1/2"`
+   - **Price** — sale price for that choice
+   - **Compare at price** — optional MRP
+   - Leave **Option key** blank (filled automatically)
+
+You do **not** need “Customer choice groups” for this simple setup.
+
+---
+
+## Products with multiple choices (Colour × Size × Finish, etc.)
+
+Use this when shoppers must combine **two or more** choices (e.g. colour **and** size).
+
+### Step 1 — List what customers can pick
+
+Under **Customer choice group**, click **Add an entry** for each type of choice:
 
 | Field | Example |
 |-------|---------|
-| **Label** | `1/2"` or `10 Bags` |
-| **Price** | Sale price for that option |
-| **Compare at price** | Optional MRP for that option |
-| **Option key** | Leave blank — auto-generated from the label |
+| **Group name** | `Colour` |
+| **Choices** | `Matte Grey, Gloss White, Beige` |
 
-You do **not** need to write JSON or codes unless you want a fixed internal key.
+Add another group:
+
+| Field | Example |
+|-------|---------|
+| **Group name** | `Size` |
+| **Choices** | `2×2 ft, 4×4 ft` |
+
+**Tips:**
+- Separate each choice with a **comma**
+- Spell names exactly as you want them in the app
+- You can add 2, 3, or more groups — the system handles any number
+
+### Step 2 — Auto-build price rows
+
+Leave **Auto build variants** turned **ON** (default).
+
+When you **Save**, Strapi creates every combination (e.g. 3 colours × 2 sizes = 6 rows) under **Price option**.
+
+### Step 3 — Set prices
+
+Open each **Price option** row and set **Price** (and optional **Compare at price**).
+
+You usually **do not** need to edit **Choice value** rows — those are filled automatically.
+
+---
 
 ## Specifications
 
-Use the **“Specification”** block — one row per line.
+Use the **Specification** block — one row per line.
 
 | Field | Example |
 |-------|---------|
 | **Label** | `Grade` |
 | **Value** | `PPC` |
 
-Add rows for Strength, Set time, Voltage, etc.
+---
 
-## After schema changes
+## After CMS code updates
 
-If you recently updated the CMS code, reset the local database once:
+Reset the local database once if your developer asks you to:
 
 ```bash
 rm .tmp/data.db
 npm run develop
 ```
 
-Sample products will be recreated automatically.
+Sample products are recreated automatically.

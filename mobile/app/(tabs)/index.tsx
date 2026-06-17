@@ -1,20 +1,19 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { CategoryTile } from '@/components/CategoryTile';
-import { ProductCard } from '@/components/ProductCard';
+import { ProductCarousel } from '@/components/ProductCarousel';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { fetchAppConfig, fetchCategories, fetchOrders, fetchProducts } from '@/lib/api';
 import { colors, spacing, typography } from '@/lib/theme';
@@ -22,7 +21,6 @@ import { useAuthStore } from '@/stores/auth';
 import type { Category } from '@/lib/types';
 
 export default function HomeScreen() {
-  const [search, setSearch] = useState('');
   const token = useAuthStore((s) => s.token);
 
   const { data: configData } = useQuery({
@@ -88,7 +86,7 @@ export default function HomeScreen() {
 
   return (
     <ScreenBackground variant="hero" style={styles.container}>
-      <AppHeader showLocation variant="home" />
+      <AppHeader showLocation showSearch variant="home" />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {config ? (
           <Pressable
@@ -108,20 +106,6 @@ export default function HomeScreen() {
           <TrustItem icon="published-with-changes" title="7 Day Replacement" sub="Quality issues" />
           <TrustItem icon="savings" title="5 Crore+ Savings" sub="Unbeatable prices" />
         </View>
-        <Pressable
-          style={styles.searchWrap}
-          onPress={() => router.push(search.trim() ? `/search?q=${encodeURIComponent(search.trim())}` : '/search')}>
-          <MaterialIcons name="search" size={22} color={colors.iconMuted} style={styles.searchIcon} />
-          <TextInput
-            style={styles.search}
-            placeholder="Search cement, steel, tiles..."
-            value={search}
-            onChangeText={setSearch}
-            onSubmitEditing={() => router.push(`/search?q=${encodeURIComponent(search.trim())}`)}
-            returnKeyType="search"
-            placeholderTextColor={colors.onSurfaceVariant}
-          />
-        </Pressable>
 
         <Pressable style={styles.prosCard} onPress={() => router.push('/professionals')}>
           <MaterialIcons name="groups" size={28} color={colors.secondary} />
@@ -145,14 +129,14 @@ export default function HomeScreen() {
           </View>
         </Pressable>
 
-        <ProductSection
+        <ProductCarousel
           title="Deals of the Week"
           loading={dealsLoading}
           products={deals}
           emptyText="New deals coming soon"
         />
 
-        <ProductSection
+        <ProductCarousel
           title="Best Sellers"
           loading={bestLoading}
           products={bestSellers}
@@ -160,7 +144,7 @@ export default function HomeScreen() {
         />
 
         {buyAgain.length > 0 ? (
-          <ProductSection title="Buy Again" products={buyAgain} />
+          <ProductCarousel title="Buy Again" products={buyAgain} />
         ) : null}
 
         <View style={styles.sectionHead}>
@@ -180,57 +164,13 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <ProductSection
+        <ProductCarousel
           title="Popular Products"
           loading={featuredLoading}
           products={featured}
         />
       </ScrollView>
     </ScreenBackground>
-  );
-}
-
-function ProductSection({
-  title,
-  products,
-  loading,
-  emptyText,
-}: {
-  title: string;
-  products: import('@/lib/types').Product[];
-  loading?: boolean;
-  emptyText?: string;
-}) {
-  if (loading) {
-    return (
-      <View style={styles.sectionBlock}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.unit4 }} />
-      </View>
-    );
-  }
-  if (!products.length) {
-    if (!emptyText) return null;
-    return (
-      <View style={styles.sectionBlock}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={styles.emptySection}>{emptyText}</Text>
-      </View>
-    );
-  }
-  return (
-    <View style={styles.sectionBlock}>
-      <View style={styles.sectionHead}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.productRow}>
-        {products.map((p) => (
-          <View key={p.documentId} style={styles.productGap}>
-            <ProductCard product={p} />
-          </View>
-        ))}
-      </ScrollView>
-    </View>
   );
 }
 
@@ -291,23 +231,6 @@ const styles = StyleSheet.create({
   trustTitle: { ...typography.labelLg, color: colors.primary, fontSize: 11, lineHeight: 14 },
   trustSub: { fontSize: 10, color: colors.onSurfaceVariant, lineHeight: 12 },
   scroll: { paddingBottom: spacing.unit12 },
-  searchWrap: {
-    marginHorizontal: spacing.containerMargin,
-    marginVertical: spacing.unit3,
-    position: 'relative',
-  },
-  searchIcon: { position: 'absolute', left: 16, top: 14, zIndex: 1 },
-  search: {
-    backgroundColor: colors.surfaceContainerLow,
-    borderWidth: 1,
-    borderColor: colors.outline,
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingLeft: 44,
-    paddingRight: 16,
-    ...typography.bodyMd,
-    color: colors.onSurface,
-  },
   prosCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -351,7 +274,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   bannerBtnText: { ...typography.labelMd, color: colors.onSecondary, fontWeight: '700' },
-  sectionBlock: { marginBottom: spacing.unit4 },
   sectionHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -360,7 +282,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.unit4,
   },
   sectionTitle: { ...typography.headlineMd, color: colors.primary, paddingHorizontal: spacing.containerMargin, marginBottom: spacing.unit2 },
-  emptySection: { ...typography.bodyMd, color: colors.onSurfaceVariant, paddingHorizontal: spacing.containerMargin },
   link: { ...typography.labelLg, color: colors.secondary },
   catGrid: {
     flexDirection: 'row',
@@ -369,6 +290,4 @@ const styles = StyleSheet.create({
     gap: spacing.unit3,
     marginBottom: spacing.unit6,
   },
-  productRow: { paddingLeft: spacing.containerMargin, marginBottom: spacing.unit4 },
-  productGap: { marginRight: spacing.unit4 },
 });

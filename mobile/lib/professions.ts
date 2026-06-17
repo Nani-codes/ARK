@@ -14,3 +14,8 @@ export function professionLabel(type?: ProfessionType | null) {
   if (!type) return 'Professional';
   return PROFESSION_OPTIONS.find((p) => p.key === type)?.label ?? 'Professional';
 }
+
+export function professionIcon(type?: ProfessionType | null) {
+  if (!type) return 'person';
+  return PROFESSION_OPTIONS.find((p) => p.key === type)?.icon ?? 'handyman';
+}

@@ -9,6 +9,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from '@/stores/auth';
 import { useLocationStore } from '@/stores/location';
 
+import { CartToast } from '@/components/CartToast';
+import { RazorpayWebCheckoutModal } from '@/components/RazorpayWebCheckoutModal';
+
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient({
@@ -55,6 +58,8 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <StatusBar style="dark" />
+      <CartToast />
+      <RazorpayWebCheckoutModal />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />

@@ -654,6 +654,8 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
   attributes: {
     authenticityVerified: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<false>;
+    autoBuildVariants: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
     bestSeller: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     brand: Schema.Attribute.String;
     bulkPricingEnabled: Schema.Attribute.Boolean &
@@ -696,6 +698,10 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    variantOptionGroups: Schema.Attribute.Component<
+      'product.variant-option-group',
+      true
+    >;
     variantOptionName: Schema.Attribute.String &
       Schema.Attribute.DefaultTo<'Size'>;
     variants: Schema.Attribute.Component<'product.product-variant', true>;

@@ -17,7 +17,7 @@ export default function CategoriesScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Categories" />
+      <AppHeader title="Categories" showSearch />
       {isLoading ? (
         <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
       ) : (

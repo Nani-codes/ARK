@@ -29,7 +29,12 @@ export function ProductCard({ product, compact }: ProductCardProps) {
       onPress={() => router.push(`/product/${product.documentId}`)}>
       <View style={styles.imageWrap}>
         {uri ? (
-          <Image source={{ uri }} style={styles.image} contentFit="cover" />
+          <Image
+            source={{ uri }}
+            style={styles.image}
+            contentFit="contain"
+            contentPosition="center"
+          />
         ) : (
           <View style={styles.placeholder}>
             <MaterialIcons name="inventory-2" size={32} color={colors.icon} />
@@ -59,7 +64,9 @@ export function ProductCard({ product, compact }: ProductCardProps) {
             <Text style={styles.compare}>{formatInr(compareAtPrice)}</Text>
           ) : null}
         </View>
-        <AddToCartControl product={product} size="sm" stopPropagation />
+        <View style={styles.actions}>
+          <AddToCartControl product={product} size="sm" showBuyNow stopPropagation />
+        </View>
       </View>
     </Pressable>
   );
@@ -75,7 +82,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardCompact: { width: '100%' },
-  imageWrap: { height: 128, backgroundColor: colors.surfaceContainer },
+  imageWrap: {
+    height: 128,
+    backgroundColor: colors.surfaceContainer,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
   image: { width: '100%', height: '100%' },
   placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   badge: {
@@ -89,6 +102,7 @@ const styles = StyleSheet.create({
   },
   badgeText: { color: colors.primary, fontSize: 10, fontWeight: '800' },
   body: { padding: spacing.unit3, flex: 1, justifyContent: 'space-between', gap: spacing.unit2 },
+  actions: { minHeight: 40 },
   name: { ...typography.labelLg, color: colors.primary, minHeight: 40 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.unit2 },
   price: { ...typography.priceDisplay, color: colors.primary, fontSize: 16 },

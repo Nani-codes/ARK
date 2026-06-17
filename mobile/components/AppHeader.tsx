@@ -1,8 +1,10 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DeliverySelectorModal } from '@/components/DeliverySelectorModal';
 import { colors, spacing, typography } from '@/lib/theme';
 import { useCartStore } from '@/stores/cart';
 import { useLocationStore } from '@/stores/location';
@@ -12,6 +14,8 @@ type AppHeaderProps = {
   subtitle?: string;
   showLocation?: boolean;
   showCart?: boolean;
+  showSearch?: boolean;
+  showLogo?: boolean;
   showBack?: boolean;
   variant?: 'default' | 'navy' | 'home';
 };
@@ -21,16 +25,20 @@ export function AppHeader({
   subtitle,
   showLocation = false,
   showCart = true,
+  showSearch = false,
+  showLogo,
   showBack = false,
   variant = 'default',
 }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
+  const [selectorVisible, setSelectorVisible] = useState(false);
   const itemCount = useCartStore((s) => s.itemCount());
   const shortLabel = useLocationStore((s) => s.shortLabel);
   const isResolving = useLocationStore((s) => s.isResolving);
   const resolveFromDevice = useLocationStore((s) => s.resolveFromDevice);
   const isNavy = variant === 'navy';
   const isHome = variant === 'home';
+  const shouldShowLogo = showLogo ?? (isHome && !showBack);
 
   const fg = isNavy || isHome ? colors.onPrimary : colors.onSurface;
   const iconColor = isNavy || isHome ? colors.secondaryContainer : colors.primary;
@@ -46,14 +54,31 @@ export function AppHeader({
       ]}>
       <View style={styles.row}>
         {showBack ? (
-          <Pressable onPress={() => router.back()} style={styles.iconBtn}>
+          <Pressable
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/');
+              }
+            }}
+            style={styles.iconBtn}>
             <MaterialIcons name="arrow-back" size={24} color={fg} />
+          </Pressable>
+        ) : null}
+        {shouldShowLogo ? (
+          <Pressable
+            onPress={() => router.push('/')}
+            style={styles.logoBtn}
+            accessibilityRole="button"
+            accessibilityLabel="ARK Home">
+            <Image source={require('@/assets/images/Logo.png')} style={styles.logo} />
           </Pressable>
         ) : null}
         {showLocation ? (
           <Pressable
             style={styles.location}
-            onPress={() => router.push('/address/select')}
+            onPress={() => setSelectorVisible(true)}
             onLongPress={() => void resolveFromDevice(true)}
             accessibilityRole="button"
             accessibilityLabel="Choose delivery address">
@@ -71,10 +96,17 @@ export function AppHeader({
           </Pressable>
         ) : title ? (
           <Text style={[styles.title, { color: fg }]}>{title}</Text>
-        ) : (
-          <View />
-        )}
+        ) : null}
         <View style={styles.actions}>
+          {showSearch ? (
+            <Pressable
+              onPress={() => router.push('/search')}
+              style={styles.iconBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Search catalog">
+              <MaterialIcons name="search" size={24} color={cartIconColor} />
+            </Pressable>
+          ) : null}
           {showCart ? (
             <Pressable onPress={() => router.push('/cart')} style={styles.iconBtn}>
               <MaterialIcons name="shopping-cart" size={24} color={cartIconColor} />
@@ -92,6 +124,10 @@ export function AppHeader({
           {subtitle}
         </Text>
       ) : null}
+      <DeliverySelectorModal
+        visible={selectorVisible}
+        onClose={() => setSelectorVisible(false)}
+      />
     </View>
   );
 }
@@ -124,6 +160,8 @@ const styles = StyleSheet.create({
   locationValue: { ...typography.labelLg, fontWeight: '600' },
   title: { ...typography.headlineMd, flex: 1 },
   subtitle: { ...typography.bodyMd, marginTop: spacing.unit1 },
+  logoBtn: { marginRight: spacing.unit1 },
+  logo: { width: 36, height: 36, borderRadius: 8 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.unit2 },
   iconBtn: { padding: spacing.unit1, position: 'relative' },
   badge: {

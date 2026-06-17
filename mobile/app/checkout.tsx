@@ -1,26 +1,38 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AddressCard } from '@/components/AddressCard';
 import { AppHeader } from '@/components/AppHeader';
+import { DeliverySelectorModal } from '@/components/DeliverySelectorModal';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeader } from '@/components/SectionHeader';
 import { createOrder } from '@/lib/api';
 import { formatFullAddress } from '@/lib/addressFormat';
 import { NEFT_BANK_DETAILS } from '@/lib/orderDisplay';
-import { COD_MAX_TOTAL, deliveryFeeLabel, GST_LABEL } from '@/lib/pricing';
+import {
+  calcDeliveryFee,
+  calcSubtotal,
+  calcTaxes,
+  calcTotal,
+  COD_MAX_TOTAL,
+  deliveryFeeLabel,
+  GST_LABEL,
+} from '@/lib/pricing';
+import { processOnlinePayment } from '@/lib/razorpay';
 import { isPincodeServiceable, loadServiceablePincodes } from '@/lib/serviceability';
 import { colors, spacing, typography } from '@/lib/theme';
 import type { DeliverySlot } from '@/lib/types';
 import { useAddressStore } from '@/stores/addresses';
+import { useAuthStore } from '@/stores/auth';
+import type { CartLine } from '@/stores/cart';
 import { useCartStore } from '@/stores/cart';
 import { useGstStore } from '@/stores/gst';
 import { usePaymentsStore } from '@/stores/payments';
 
-type PaymentMethod = 'neft' | 'cod';
+type PaymentMethod = 'neft' | 'cod' | 'online';
 
 const SLOT_OPTIONS: { key: DeliverySlot; label: string; sub: string }[] = [
   { key: 'asap', label: 'ASAP', sub: '60–90 min target' },
@@ -29,12 +41,34 @@ const SLOT_OPTIONS: { key: DeliverySlot; label: string; sub: string }[] = [
 ];
 
 export default function CheckoutScreen() {
-  const items = useCartStore((s) => s.items);
-  const subtotal = useCartStore((s) => s.subtotal());
-  const taxes = useCartStore((s) => s.taxes());
-  const deliveryFee = useCartStore((s) => s.deliveryFee());
-  const total = useCartStore((s) => s.total());
+  const { buyNow, buyNowItems: buyNowItemsRaw } = useLocalSearchParams<{
+    buyNow?: string;
+    buyNowItems?: string;
+  }>();
+
+  const buyNowItems = useMemo(() => {
+    if (buyNow === 'true' && buyNowItemsRaw) {
+      try {
+        return JSON.parse(decodeURIComponent(buyNowItemsRaw)) as CartLine[];
+      } catch {
+        return [];
+      }
+    }
+    return null;
+  }, [buyNow, buyNowItemsRaw]);
+
+  const cartItems = useCartStore((s) => s.items);
+  const cartSubtotal = useCartStore((s) => s.subtotal());
+  const cartTaxes = useCartStore((s) => s.taxes());
+  const cartDeliveryFee = useCartStore((s) => s.deliveryFee());
+  const cartTotal = useCartStore((s) => s.total());
   const clear = useCartStore((s) => s.clear);
+
+  const items = buyNowItems ?? cartItems;
+  const subtotal = buyNowItems ? calcSubtotal(buyNowItems) : cartSubtotal;
+  const taxes = buyNowItems ? calcTaxes(subtotal) : cartTaxes;
+  const deliveryFee = buyNowItems ? calcDeliveryFee(subtotal) : cartDeliveryFee;
+  const total = buyNowItems ? calcTotal(subtotal, taxes, deliveryFee) : cartTotal;
 
   const selectedAddress = useAddressStore((s) => {
     if (s.selectedId) return s.addresses.find((a) => a.id === s.selectedId) ?? null;
@@ -43,22 +77,68 @@ export default function CheckoutScreen() {
 
   const gstin = useGstStore((s) => s.gstin);
   const businessName = useGstStore((s) => s.businessName);
+  const user = useAuthStore((s) => s.user);
   const neftReference = usePaymentsStore((s) => s.neftReference);
   const setNeftReference = usePaymentsStore((s) => s.setNeftReference);
 
-  const [payment, setPayment] = useState<PaymentMethod>('cod');
+  const [payment, setPayment] = useState<PaymentMethod>('online');
   const [deliverySlot, setDeliverySlot] = useState<DeliverySlot>('asap');
+  const [showSlotPicker, setShowSlotPicker] = useState(false);
+  const [selectorVisible, setSelectorVisible] = useState(false);
+  const [isServiceable, setIsServiceable] = useState<boolean | null>(null);
   const queryClient = useQueryClient();
+
+  const slotsDisabled = isServiceable === false;
 
   useEffect(() => {
     void loadServiceablePincodes();
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    const checkServiceability = async () => {
+      if (!selectedAddress) {
+        setIsServiceable(null);
+        return;
+      }
+      const ok = await isPincodeServiceable(selectedAddress.pincode);
+      if (active) {
+        setIsServiceable(ok);
+      }
+    };
+    void checkServiceability();
+    return () => {
+      active = false;
+    };
+  }, [selectedAddress]);
+
+  useEffect(() => {
+    if (buyNow === 'true') {
+      if (!buyNowItems || buyNowItems.length === 0) {
+        router.replace('/cart');
+      }
+    } else if (cartItems.length === 0) {
+      router.replace('/cart');
+    }
+  }, [cartItems.length, buyNow, buyNowItems]);
+
   const codDisabled = total > COD_MAX_TOTAL;
 
   const placeOrder = useMutation({
-    mutationFn: () =>
-      createOrder({
+    mutationFn: async () => {
+      let razorpayOrderId: string | undefined;
+      let razorpayPaymentId: string | undefined;
+
+      if (payment === 'online') {
+        const result = await processOnlinePayment(total, {
+          contact: user?.phone,
+          email: user?.email,
+        });
+        razorpayOrderId = result.razorpayOrderId;
+        razorpayPaymentId = result.razorpayPaymentId;
+      }
+
+      return createOrder({
         orderStatus: 'pending',
         paymentMethod: payment,
         deliveryAddress: selectedAddress ? formatFullAddress(selectedAddress) : '',
@@ -68,6 +148,8 @@ export default function CheckoutScreen() {
         gstin: gstin || undefined,
         businessName: businessName || undefined,
         neftProofUrl: payment === 'neft' && neftReference ? neftReference : undefined,
+        razorpayOrderId,
+        razorpayPaymentId,
         subtotal,
         taxes,
         total,
@@ -80,9 +162,12 @@ export default function CheckoutScreen() {
           unitPrice: i.unitPrice,
           lineTotal: i.unitPrice * i.quantity,
         })),
-      }),
+      });
+    },
     onSuccess: (res) => {
-      clear();
+      if (buyNow !== 'true') {
+        clear();
+      }
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       router.replace({ pathname: '/order-success', params: { orderNumber: res.data.orderNumber } });
     },
@@ -108,10 +193,18 @@ export default function CheckoutScreen() {
     placeOrder.mutate();
   };
 
-  if (items.length === 0) {
-    router.replace('/cart');
+  const isEmpty =
+    buyNow === 'true' ? !buyNowItems || buyNowItems.length === 0 : cartItems.length === 0;
+  if (isEmpty) {
     return null;
   }
+
+  const placeOrderLabel =
+    slotsDisabled
+      ? 'Area Not Serviceable'
+      : payment === 'online'
+        ? 'Pay & Place Order'
+        : 'Place Order';
 
   return (
     <View style={styles.container}>
@@ -123,13 +216,21 @@ export default function CheckoutScreen() {
         {selectedAddress ? (
           <View>
             <AddressCard address={selectedAddress} />
-            <Pressable style={styles.changeBtn} onPress={() => router.push('/address/select')}>
+            {slotsDisabled ? (
+              <View style={styles.unserviceableWarning}>
+                <MaterialIcons name="error" size={20} color={colors.onError} />
+                <Text style={styles.unserviceableText}>
+                  We do not deliver to pincode {selectedAddress.pincode} yet. Please choose another address.
+                </Text>
+              </View>
+            ) : null}
+            <Pressable style={styles.changeBtn} onPress={() => setSelectorVisible(true)}>
               <MaterialIcons name="edit-location-alt" size={16} color={colors.secondary} />
               <Text style={styles.changeBtnText}>Change Address</Text>
             </Pressable>
           </View>
         ) : (
-          <Pressable style={styles.emptyAddress} onPress={() => router.push('/address/select')}>
+          <Pressable style={styles.emptyAddress} onPress={() => setSelectorVisible(true)}>
             <MaterialIcons name="add-location-alt" size={28} color={colors.secondary} />
             <View style={{ flex: 1 }}>
               <Text style={styles.emptyAddressTitle}>Select Delivery Address</Text>
@@ -139,36 +240,107 @@ export default function CheckoutScreen() {
           </Pressable>
         )}
 
-        <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>DELIVERY SLOT</Text>
-        {SLOT_OPTIONS.map((slot) => (
-          <Pressable
-            key={slot.key}
-            style={[styles.payOption, deliverySlot === slot.key && styles.payOptionActive]}
-            onPress={() => setDeliverySlot(slot.key)}>
-            <View style={styles.radio}>
-              {deliverySlot === slot.key ? <View style={styles.radioDot} /> : null}
-            </View>
-            <View style={styles.payText}>
-              <Text style={styles.payTitle}>{slot.label}</Text>
-              <Text style={styles.paySub}>{slot.sub}</Text>
-            </View>
-          </Pressable>
-        ))}
+        <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>DELIVERY SLOT (OPTIONAL)</Text>
+        <Pressable
+          style={[styles.slotSummary, slotsDisabled && styles.payOptionDisabled]}
+          onPress={() => !slotsDisabled && setShowSlotPicker((v) => !v)}
+          disabled={slotsDisabled}>
+          <View style={styles.slotSummaryText}>
+            <Text style={[styles.slotSummaryTitle, slotsDisabled && styles.payTitleDisabled]}>
+              {SLOT_OPTIONS.find((s) => s.key === deliverySlot)?.label ?? 'ASAP'}
+            </Text>
+            <Text style={styles.slotSummarySub}>
+              {slotsDisabled
+                ? 'Delivery options unavailable'
+                : showSlotPicker
+                  ? 'Tap to collapse'
+                  : SLOT_OPTIONS.find((s) => s.key === deliverySlot)?.sub ?? 'Fastest available'}
+            </Text>
+          </View>
+          <MaterialIcons
+            name={showSlotPicker ? 'expand-less' : 'expand-more'}
+            size={24}
+            color={slotsDisabled ? colors.iconMuted : colors.iconMuted}
+          />
+        </Pressable>
+        {showSlotPicker && !slotsDisabled ? (
+          <>
+            {SLOT_OPTIONS.map((slot) => (
+              <Pressable
+                key={slot.key}
+                style={[styles.payOption, deliverySlot === slot.key && styles.payOptionActive]}
+                onPress={() => setDeliverySlot(slot.key)}>
+                <View style={styles.radio}>
+                  {deliverySlot === slot.key ? <View style={styles.radioDot} /> : null}
+                </View>
+                <View style={styles.payText}>
+                  <Text style={styles.payTitle}>{slot.label}</Text>
+                  <Text style={styles.paySub}>{slot.sub}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </>
+        ) : !slotsDisabled ? (
+          <Text style={styles.slotHint}>
+            Leave as ASAP for fastest delivery — expand only if you need a specific window.
+          </Text>
+        ) : null}
 
         <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>SELECT PAYMENT METHOD</Text>
 
         <Pressable
-          style={[styles.payOption, payment === 'neft' && styles.payOptionActive]}
-          onPress={() => setPayment('neft')}>
-          <View style={styles.radio}>{payment === 'neft' ? <View style={styles.radioDot} /> : null}</View>
-          <View style={styles.payText}>
-            <Text style={styles.payTitle}>Bank Transfer (NEFT/RTGS)</Text>
-            <Text style={styles.paySub}>Faster verification for bulk orders</Text>
+          style={[
+            styles.payOption,
+            payment === 'online' && !slotsDisabled ? styles.payOptionActive : null,
+            slotsDisabled ? styles.payOptionDisabled : null,
+          ]}
+          onPress={() => !slotsDisabled && setPayment('online')}
+          disabled={slotsDisabled}>
+          <View style={styles.radio}>
+            {payment === 'online' && !slotsDisabled ? <View style={styles.radioDot} /> : null}
           </View>
-          <MaterialIcons name="account-balance" size={28} color={colors.icon} />
+          <View style={styles.payText}>
+            <Text style={[styles.payTitle, slotsDisabled && styles.payTitleDisabled]}>
+              Pay Online (UPI / Cards)
+            </Text>
+            <Text style={styles.paySub}>
+              {slotsDisabled ? 'Payment options unavailable' : 'Secure Razorpay checkout'}
+            </Text>
+          </View>
+          <MaterialIcons
+            name="credit-card"
+            size={28}
+            color={slotsDisabled ? colors.iconMuted : colors.icon}
+          />
         </Pressable>
 
-        {payment === 'neft' ? (
+        <Pressable
+          style={[
+            styles.payOption,
+            payment === 'neft' && !slotsDisabled ? styles.payOptionActive : null,
+            slotsDisabled ? styles.payOptionDisabled : null,
+          ]}
+          onPress={() => !slotsDisabled && setPayment('neft')}
+          disabled={slotsDisabled}>
+          <View style={styles.radio}>
+            {payment === 'neft' && !slotsDisabled ? <View style={styles.radioDot} /> : null}
+          </View>
+          <View style={styles.payText}>
+            <Text style={[styles.payTitle, slotsDisabled && styles.payTitleDisabled]}>
+              Bank Transfer (NEFT/RTGS)
+            </Text>
+            <Text style={styles.paySub}>
+              {slotsDisabled ? 'Payment options unavailable' : 'Faster verification for bulk orders'}
+            </Text>
+          </View>
+          <MaterialIcons
+            name="account-balance"
+            size={28}
+            color={slotsDisabled ? colors.iconMuted : colors.icon}
+          />
+        </Pressable>
+
+        {payment === 'neft' && !slotsDisabled ? (
           <View style={styles.neftBox}>
             <Text style={styles.neftTitle}>Transfer to:</Text>
             <Text style={styles.neftLine}>{NEFT_BANK_DETAILS.accountName}</Text>
@@ -188,23 +360,31 @@ export default function CheckoutScreen() {
         <Pressable
           style={[
             styles.payOption,
-            payment === 'cod' && styles.payOptionActive,
-            codDisabled && styles.payOptionDisabled,
+            payment === 'cod' && !slotsDisabled ? styles.payOptionActive : null,
+            (codDisabled || slotsDisabled) ? styles.payOptionDisabled : null,
           ]}
-          onPress={() => !codDisabled && setPayment('cod')}
-          disabled={codDisabled}>
-          <View style={styles.radio}>{payment === 'cod' ? <View style={styles.radioDot} /> : null}</View>
+          onPress={() => !codDisabled && !slotsDisabled && setPayment('cod')}
+          disabled={codDisabled || slotsDisabled}>
+          <View style={styles.radio}>
+            {payment === 'cod' && !slotsDisabled ? <View style={styles.radioDot} /> : null}
+          </View>
           <View style={styles.payText}>
-            <Text style={[styles.payTitle, codDisabled && styles.payTitleDisabled]}>
+            <Text style={[styles.payTitle, (codDisabled || slotsDisabled) && styles.payTitleDisabled]}>
               Cash on Delivery (COD)
             </Text>
             <Text style={styles.paySub}>
-              {codDisabled
-                ? `Not available above ₹${COD_MAX_TOTAL.toLocaleString('en-IN')}`
-                : 'Pay after verifying materials'}
+              {slotsDisabled
+                ? 'Payment options unavailable'
+                : codDisabled
+                  ? `Not available above ₹${COD_MAX_TOTAL.toLocaleString('en-IN')}`
+                  : 'Pay after verifying materials'}
             </Text>
           </View>
-          <MaterialIcons name="payments" size={28} color={codDisabled ? colors.iconMuted : colors.icon} />
+          <MaterialIcons
+            name="payments"
+            size={28}
+            color={codDisabled || slotsDisabled ? colors.iconMuted : colors.icon}
+          />
         </Pressable>
 
         {gstin ? (
@@ -230,8 +410,15 @@ export default function CheckoutScreen() {
           </View>
           <View style={styles.totalRow}>
             <Text style={styles.totalLineLabel}>Delivery</Text>
-            <Text style={deliveryFee === 0 ? styles.free : undefined}>
-              {deliveryFee === 0 ? 'Free' : `₹${deliveryFee}`}
+            <Text
+              style={
+                slotsDisabled
+                  ? styles.unserviceablePrice
+                  : deliveryFee === 0
+                    ? styles.free
+                    : undefined
+              }>
+              {slotsDisabled ? 'Unavailable' : deliveryFee === 0 ? 'Free' : `₹${deliveryFee}`}
             </Text>
           </View>
           <View style={styles.totalRow}>
@@ -240,18 +427,22 @@ export default function CheckoutScreen() {
           </View>
           <Text style={styles.totalLabel}>Total Amount</Text>
           <Text style={styles.totalValue}>
-            ₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            {slotsDisabled
+              ? 'Unavailable'
+              : `₹${total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
           </Text>
         </View>
 
         <PrimaryButton
-          label="Place Order"
+          label={placeOrderLabel}
           onPress={handlePlaceOrder}
           loading={placeOrder.isPending}
-          disabled={!selectedAddress}
+          disabled={!selectedAddress || slotsDisabled}
         />
         {!selectedAddress ? (
           <Text style={styles.addressHint}>Please select a delivery address to continue</Text>
+        ) : slotsDisabled ? (
+          <Text style={styles.addressHint}>Cannot place order to an unserviceable pincode</Text>
         ) : null}
         {placeOrder.isError ? (
           <Text style={styles.error}>
@@ -259,6 +450,11 @@ export default function CheckoutScreen() {
           </Text>
         ) : null}
       </ScrollView>
+
+      <DeliverySelectorModal
+        visible={selectorVisible}
+        onClose={() => setSelectorVisible(false)}
+      />
     </View>
   );
 }
@@ -268,6 +464,20 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.containerMargin, paddingBottom: spacing.unit12, gap: spacing.unit3 },
   sectionLabel: { ...typography.labelLg, color: colors.primary, textTransform: 'uppercase', marginBottom: spacing.unit2 },
   sectionLabelSpaced: { marginTop: spacing.unit4 },
+  slotSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.unit3,
+    padding: spacing.unit4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    backgroundColor: colors.surface,
+  },
+  slotSummaryText: { flex: 1 },
+  slotSummaryTitle: { ...typography.labelLg, color: colors.primary },
+  slotSummarySub: { ...typography.bodyMd, color: colors.onSurfaceVariant, marginTop: 2 },
+  slotHint: { ...typography.bodyMd, color: colors.onSurfaceVariant, marginTop: spacing.unit2 },
   emptyAddress: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.unit3,
     backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1.5,
@@ -319,4 +529,23 @@ const styles = StyleSheet.create({
   totalValue: { ...typography.priceDisplay, fontSize: 24, color: colors.primary },
   addressHint: { ...typography.bodyMd, color: colors.onSurfaceVariant, textAlign: 'center', marginTop: spacing.unit1 },
   error: { color: colors.error, ...typography.bodyMd, textAlign: 'center', marginTop: spacing.unit2 },
+  unserviceableWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.unit2,
+    backgroundColor: colors.error,
+    padding: spacing.unit3,
+    borderRadius: 8,
+    marginTop: spacing.unit2,
+  },
+  unserviceableText: {
+    ...typography.bodyMd,
+    color: colors.onError,
+    flex: 1,
+    fontWeight: '600',
+  },
+  unserviceablePrice: {
+    color: colors.error,
+    fontWeight: '700',
+  },
 });

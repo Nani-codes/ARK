@@ -13,15 +13,22 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { AddToCartControl } from '@/components/AddToCartControl';
 import { AppHeader } from '@/components/AppHeader';
+import { CollapsibleSection } from '@/components/CollapsibleSection';
 import { ProductPriceBlock } from '@/components/ProductPriceBlock';
 import { VariantPicker } from '@/components/VariantPicker';
 import { fetchProduct } from '@/lib/api';
-import { formatInr, getProductDisplayPricing, getProductVariants } from '@/lib/productPricing';
-import { mediaUrl } from '@/lib/strapi';
+import { formatInr, getProductDisplayPricing, getProductVariants, resolveProductImageUrl } from '@/lib/productPricing';
+import {
+  findVariantByOptions,
+  getInitialSelection,
+  productHasSelectableVariants,
+  selectOption,
+} from '@/lib/productVariants';
 import { colors, spacing, typography } from '@/lib/theme';
-import type { ProductVariant } from '@/lib/types';
+import { buildCartLine, cartLineId, useCartStore } from '@/stores/cart';
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -39,50 +46,75 @@ export default function ProductDetailScreen() {
     [product]
   );
 
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (variants.length) setSelectedVariant(variants[0]);
-  }, [product?.documentId, variants]);
+    if (product) setSelectedOptions(getInitialSelection(product));
+  }, [product?.documentId, product]);
+
+  const selectedVariant = useMemo(
+    () => (product ? findVariantByOptions(product, selectedOptions) : null),
+    [product, selectedOptions]
+  );
 
   if (isLoading || !product || !selectedVariant) {
     return (
       <View style={styles.loading}>
-        <AppHeader showBack showLocation={false} />
+        <AppHeader showBack showLocation={false} showSearch />
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
-  const uri = mediaUrl(product.image?.url);
+  const uri = resolveProductImageUrl(product, selectedVariant);
   const specs = product.specs ?? [];
   const { price, compareAtPrice, percent } = getProductDisplayPricing(product, selectedVariant);
-  const variantLabel = product.variantOptionName ?? 'Size';
   const replacementDays = product.replacementDays ?? 7;
-  const minVariantPrice = Math.min(...getProductVariants(product).map((v) => v.price));
+  const minVariantPrice = Math.min(...variants.map((v) => v.price));
   const unitLabel = product.priceUnitLabel ?? (product.unit === 'Sq Ft' ? '₹/ft²' : `/${product.unit}`);
+
+  const handleSelectOption = (dimension: string, value: string) => {
+    setSelectedOptions((current) => selectOption(product, current, dimension, value));
+  };
+
+  const handleBuyNow = () => {
+    if (!product.inStock || !selectedVariant) return;
+
+    const lineId = cartLineId(product.documentId, selectedVariant.id);
+    const cartQty =
+      useCartStore.getState().items.find((i) => i.lineId === lineId)?.quantity ?? 0;
+    const checkoutQty = cartQty > 0 ? cartQty : 1;
+    const item = buildCartLine(product, selectedVariant, checkoutQty);
+    const itemsParam = encodeURIComponent(JSON.stringify([item]));
+    router.push(`/checkout?buyNow=true&buyNowItems=${itemsParam}`);
+  };
 
   return (
     <View style={styles.container}>
-      <AppHeader showBack />
+      <AppHeader showBack showSearch />
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 100 }]}>
-        <View style={styles.imageWrap}>
-          {percent != null && percent > 0 ? (
-            <View style={styles.imageBadge}>
-              <Text style={styles.imageBadgeText}>{percent}% OFF</Text>
-            </View>
-          ) : null}
-          {uri ? (
-            <Image source={{ uri }} style={styles.image} contentFit="contain" />
-          ) : (
-            <View style={styles.placeholder}>
-              <MaterialIcons name="inventory-2" size={64} color={colors.icon} />
-            </View>
-          )}
-        </View>
-
         <View style={styles.content}>
+          <View style={styles.imageWrap}>
+            {percent != null && percent > 0 ? (
+              <View style={styles.imageBadge}>
+                <Text style={styles.imageBadgeText}>{percent}% OFF</Text>
+              </View>
+            ) : null}
+            {uri ? (
+              <Image
+                source={{ uri }}
+                style={styles.image}
+                contentFit="contain"
+                contentPosition="center"
+              />
+            ) : (
+              <View style={styles.placeholder}>
+                <MaterialIcons name="inventory-2" size={64} color={colors.icon} />
+              </View>
+            )}
+          </View>
+
           {product.inStock ? (
             <View style={styles.stockTag}>
               <Text style={styles.stockText}>IN-STOCK</Text>
@@ -97,12 +129,19 @@ export default function ProductDetailScreen() {
             percent={percent}
             size="lg"
           />
-          {getProductVariants(product).length > 1 ? (
+          {productHasSelectableVariants(product) ? (
             <Text style={styles.startsAt}>
               Starts at {formatInr(minVariantPrice)}
               {unitLabel}
             </Text>
           ) : null}
+
+          <VariantPicker
+            product={product}
+            selectedOptions={selectedOptions}
+            selectedVariant={selectedVariant}
+            onSelectOption={handleSelectOption}
+          />
 
           <View style={styles.trustRow}>
             <View style={styles.trustChip}>
@@ -140,16 +179,8 @@ export default function ProductDetailScreen() {
             </Pressable>
           ) : null}
 
-          <VariantPicker
-            label={variantLabel}
-            variants={variants}
-            selectedId={selectedVariant.id}
-            onSelect={setSelectedVariant}
-          />
-
           {specs.length > 0 ? (
-            <>
-              <View style={styles.divider} />
+            <CollapsibleSection title="Additional Details" defaultOpen={false}>
               <View style={styles.specGrid}>
                 {specs.map((row) => (
                   <SpecBox
@@ -159,11 +190,14 @@ export default function ProductDetailScreen() {
                   />
                 ))}
               </View>
-            </>
-          ) : null}
-
-          {product.description ? (
-            <Text style={styles.desc}>{product.description}</Text>
+              {product.description ? (
+                <Text style={styles.desc}>{product.description}</Text>
+              ) : null}
+            </CollapsibleSection>
+          ) : product.description ? (
+            <CollapsibleSection title="Additional Details" defaultOpen={false}>
+              <Text style={styles.desc}>{product.description}</Text>
+            </CollapsibleSection>
           ) : null}
         </View>
       </ScrollView>
@@ -173,7 +207,14 @@ export default function ProductDetailScreen() {
           product={product}
           variant={selectedVariant}
           size="md"
-          style={styles.stickyControl}
+          style={styles.stickyAdd}
+        />
+        <PrimaryButton
+          label="Buy Now"
+          variant="navy"
+          onPress={handleBuyNow}
+          disabled={!product.inStock}
+          style={styles.buyNowBtn}
         />
       </View>
     </View>
@@ -192,15 +233,17 @@ function SpecBox({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   loading: { flex: 1, backgroundColor: colors.background },
-  scroll: { paddingBottom: spacing.unit12 },
+  scroll: { paddingBottom: spacing.unit12, paddingTop: spacing.containerMargin },
   imageWrap: {
     aspectRatio: 1,
-    margin: spacing.containerMargin,
+    marginBottom: spacing.unit4,
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: colors.surfaceContainerLowest,
     borderWidth: 1,
     borderColor: colors.outlineVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   imageBadge: {
     position: 'absolute',
@@ -213,7 +256,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   imageBadgeText: { ...typography.labelMd, fontWeight: '800', color: colors.primary },
-  image: { width: '100%', height: '100%' },
+  image: { width: '100%', height: '100%', alignSelf: 'center' },
   placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { paddingHorizontal: spacing.containerMargin },
   stockTag: {
@@ -259,12 +302,10 @@ const styles = StyleSheet.create({
   bulkText: { flex: 1 },
   bulkTitle: { ...typography.labelLg, color: colors.primary },
   bulkSub: { ...typography.labelMd, color: colors.onSurfaceVariant, marginTop: 2 },
-  divider: { height: 1, backgroundColor: colors.outlineVariant, marginVertical: spacing.unit4 },
   specGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.unit3,
-    marginBottom: spacing.unit4,
   },
   specBox: {
     flexGrow: 1,
@@ -279,12 +320,15 @@ const styles = StyleSheet.create({
   },
   specLabel: { ...typography.labelMd, color: colors.onSurfaceVariant, marginBottom: 4 },
   specValue: { ...typography.labelLg, color: colors.primary, fontWeight: '700' },
-  desc: { ...typography.bodyMd, color: colors.onSurfaceVariant, marginTop: spacing.unit4 },
+  desc: { ...typography.bodyMd, color: colors.onSurfaceVariant, marginTop: spacing.unit3 },
   stickyBar: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.unit3,
     paddingHorizontal: spacing.containerMargin,
     paddingTop: spacing.unit3,
     backgroundColor: colors.surface,
@@ -296,5 +340,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -4 },
     elevation: 8,
   },
-  stickyControl: { width: '100%' },
+  stickyAdd: { flex: 1 },
+  buyNowBtn: { flex: 1 },
 });

@@ -1,15 +1,14 @@
 {
   "collectionName": "components_product_product_variants",
   "info": {
-    "displayName": "Size / pack option",
-    "description": "One purchasable option (e.g. 1/2 inch, 10 bags). Add a row per size or pack.",
+    "displayName": "Price option",
+    "description": "One sellable combination with its price. Use “Customer choice groups” above to auto-create these, then set each price here.",
     "icon": "layer"
   },
   "options": {},
   "attributes": {
     "label": {
-      "type": "string",
-      "required": true
+      "type": "string"
     },
     "optionKey": {
       "type": "string"
@@ -22,6 +21,17 @@
     "compareAtPrice": {
       "type": "decimal",
       "min": 0
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "choices": {
+      "type": "component",
+      "repeatable": true,
+      "component": "product.variant-choice"
     }
   }
 }

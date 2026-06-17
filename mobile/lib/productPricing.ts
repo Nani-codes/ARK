@@ -1,3 +1,4 @@
+import { mediaUrl } from '@/lib/strapi';
 import type { Product, ProductVariant } from '@/lib/types';
 
 export function formatInr(amount: number): string {
@@ -10,6 +11,16 @@ export function discountPercent(sale: number, regular?: number | null): number |
 }
 
 /** Effective variants: explicit list or single default from base price. */
+/** Variant image when set, otherwise the product hero image. */
+export function resolveProductImageUrl(
+  product: Product,
+  variant?: ProductVariant
+): string | undefined {
+  const selected = variant ?? getProductVariants(product)[0];
+  const path = selected?.image?.url ?? product.image?.url;
+  return mediaUrl(path);
+}
+
 export function getProductVariants(product: Product): ProductVariant[] {
   if (product.variants?.length) return product.variants;
   return [

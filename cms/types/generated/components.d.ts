@@ -41,11 +41,12 @@ export interface ProductProductSpec extends Struct.ComponentSchema {
 export interface ProductProductVariant extends Struct.ComponentSchema {
   collectionName: 'components_product_product_variants';
   info: {
-    description: 'One purchasable option (e.g. 1/2 inch, 10 bags). Add a row per size or pack.';
-    displayName: 'Size / pack option';
+    description: 'One sellable combination with its price. Use \u201CCustomer choice groups\u201D above to auto-create these, then set each price here.';
+    displayName: 'Price option';
     icon: 'layer';
   };
   attributes: {
+    choices: Schema.Attribute.Component<'product.variant-choice', true>;
     compareAtPrice: Schema.Attribute.Decimal &
       Schema.Attribute.SetMinMax<
         {
@@ -53,7 +54,8 @@ export interface ProductProductVariant extends Struct.ComponentSchema {
         },
         number
       >;
-    label: Schema.Attribute.String & Schema.Attribute.Required;
+    image: Schema.Attribute.Media<'images'>;
+    label: Schema.Attribute.String;
     optionKey: Schema.Attribute.String;
     price: Schema.Attribute.Decimal &
       Schema.Attribute.Required &
@@ -66,12 +68,40 @@ export interface ProductProductVariant extends Struct.ComponentSchema {
   };
 }
 
+export interface ProductVariantChoice extends Struct.ComponentSchema {
+  collectionName: 'components_product_variant_choices';
+  info: {
+    description: 'Filled automatically when combinations are built. You usually only edit the price above.';
+    displayName: 'Choice value';
+    icon: 'check';
+  };
+  attributes: {
+    choice: Schema.Attribute.String & Schema.Attribute.Required;
+    groupName: Schema.Attribute.String & Schema.Attribute.Required;
+  };
+}
+
+export interface ProductVariantOptionGroup extends Struct.ComponentSchema {
+  collectionName: 'components_product_variant_option_groups';
+  info: {
+    description: 'One type of choice shoppers make \u2014 e.g. Colour, Size, or Finish. Write each choice separated by a comma.';
+    displayName: 'Customer choice group';
+    icon: 'bulletList';
+  };
+  attributes: {
+    choices: Schema.Attribute.Text & Schema.Attribute.Required;
+    groupName: Schema.Attribute.String & Schema.Attribute.Required;
+  };
+}
+
 declare module '@strapi/strapi' {
   export module Public {
     export interface ComponentSchemas {
       'order.order-item': OrderOrderItem;
       'product.product-spec': ProductProductSpec;
       'product.product-variant': ProductProductVariant;
+      'product.variant-choice': ProductVariantChoice;
+      'product.variant-option-group': ProductVariantOptionGroup;
     }
   }
 }

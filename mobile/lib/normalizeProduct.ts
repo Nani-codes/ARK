@@ -1,16 +1,24 @@
-import type { Product, ProductSpec, ProductVariant } from '@/lib/types';
+import type { Product, ProductSpec, ProductVariant, StrapiMedia, VariantOption } from '@/lib/types';
+
+type StrapiMediaRow = {
+  url?: string;
+  alternativeText?: string;
+};
 
 type StrapiVariantRow = {
   label?: string;
   optionKey?: string;
   price?: number | string;
   compareAtPrice?: number | string | null;
+  image?: StrapiMediaRow | null;
+  options?: Record<string, string> | null;
+  choices?: Array<{ groupName?: string; choice?: string }> | null;
   id?: string;
 };
 
-type StrapiSpecRow = {
-  label?: string;
-  value?: string;
+type StrapiOptionGroupRow = {
+  groupName?: string;
+  choices?: string;
 };
 
 type LegacySpecs = {
@@ -21,7 +29,14 @@ type LegacySpecs = {
 
 type RawProduct = Product & {
   variants?: StrapiVariantRow[] | null;
+  variantOptionGroups?: StrapiOptionGroupRow[] | null;
+  variantOptions?: VariantOption[] | null;
   specs?: StrapiSpecRow[] | LegacySpecs | null;
+};
+
+type StrapiSpecRow = {
+  label?: string;
+  value?: string;
 };
 
 function slugify(label: string, index: number): string {
@@ -34,17 +49,70 @@ function slugify(label: string, index: number): string {
   return key || `option-${index}`;
 }
 
+function parseChoicesText(text: string): string[] {
+  return text
+    .split(/[,;|\n]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function optionsFromChoices(
+  choices?: Array<{ groupName?: string; choice?: string }> | null
+): Record<string, string> | undefined {
+  if (!choices?.length) return undefined;
+  const map: Record<string, string> = {};
+  for (const row of choices) {
+    const name = row.groupName?.trim();
+    const value = row.choice?.trim();
+    if (name && value) map[name] = value;
+  }
+  return Object.keys(map).length > 0 ? map : undefined;
+}
+
+function normalizeMedia(media?: StrapiMediaRow | null): StrapiMedia | null {
+  if (!media?.url) return null;
+  return { url: media.url, alternativeText: media.alternativeText };
+}
+
+function normalizeVariantOptions(
+  groups?: StrapiOptionGroupRow[] | null,
+  legacy?: VariantOption[] | null
+): VariantOption[] | undefined {
+  if (groups?.length) {
+    const parsed = groups
+      .map((group) => ({
+        name: (group.groupName ?? '').trim(),
+        values: parseChoicesText(group.choices ?? ''),
+      }))
+      .filter((group) => group.name && group.values.length > 0);
+    if (parsed.length) return parsed;
+  }
+
+  if (legacy?.length) return legacy;
+  return undefined;
+}
+
 function normalizeVariants(rows?: StrapiVariantRow[] | null): ProductVariant[] | undefined {
   if (!rows?.length) return undefined;
-  return rows.map((row, index) => ({
-    id: row.optionKey?.trim() || row.id || slugify(row.label ?? '', index),
-    label: row.label ?? '',
-    price: Number(row.price),
-    compareAtPrice:
-      row.compareAtPrice != null && row.compareAtPrice !== ''
-        ? Number(row.compareAtPrice)
-        : undefined,
-  }));
+  return rows.map((row, index) => {
+    const options =
+      optionsFromChoices(row.choices) ??
+      (row.options && typeof row.options === 'object' && Object.keys(row.options).length > 0
+        ? row.options
+        : undefined);
+
+    return {
+      id: row.optionKey?.trim() || row.id || slugify(row.label ?? '', index),
+      label: row.label ?? (options ? Object.values(options).join(' / ') : ''),
+      price: Number(row.price),
+      compareAtPrice:
+        row.compareAtPrice != null && row.compareAtPrice !== ''
+          ? Number(row.compareAtPrice)
+          : undefined,
+      image: normalizeMedia(row.image),
+      options,
+    };
+  });
 }
 
 function normalizeSpecs(
@@ -66,13 +134,17 @@ function normalizeSpecs(
 
 /** Map Strapi product (components or legacy JSON) to app Product shape. */
 export function normalizeProduct(raw: RawProduct): Product {
+  const variantOptionGroups = normalizeVariantOptions(
+    raw.variantOptionGroups as StrapiOptionGroupRow[] | undefined,
+    raw.variantOptions
+  );
+
   return {
     ...raw,
     price: Number(raw.price),
     compareAtPrice:
-      raw.compareAtPrice != null && raw.compareAtPrice !== ''
-        ? Number(raw.compareAtPrice)
-        : null,
+      raw.compareAtPrice != null ? Number(raw.compareAtPrice) : null,
+    variantOptions: variantOptionGroups,
     variants: normalizeVariants(raw.variants as StrapiVariantRow[]),
     specs: normalizeSpecs(raw.specs),
   };

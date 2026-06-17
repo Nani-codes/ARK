@@ -59,6 +59,15 @@
       "type": "string",
       "default": "Size"
     },
+    "variantOptionGroups": {
+      "type": "component",
+      "repeatable": true,
+      "component": "product.variant-option-group"
+    },
+    "autoBuildVariants": {
+      "type": "boolean",
+      "default": true
+    },
     "variants": {
       "type": "component",
       "repeatable": true,

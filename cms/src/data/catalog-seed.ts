@@ -1,4 +1,4 @@
-import { spec, variant } from './catalog-helpers';
+import { optionGroup, spec, variant, variantCombo } from './catalog-helpers';
 
 export type CatalogProductSeed = {
   name: string;
@@ -19,6 +19,8 @@ export type CatalogProductSeed = {
   bulkPricingEnabled?: boolean;
   replacementDays?: number;
   variantOptionName?: string;
+  variantOptionGroups?: Array<{ groupName: string; choices: string }>;
+  autoBuildVariants?: boolean;
   variants?: ReturnType<typeof variant>[];
   specs?: ReturnType<typeof spec>[];
 };
@@ -529,10 +531,23 @@ export const CATALOG_PRODUCTS: CatalogProductSeed[] = [
     bestSeller: true,
     authenticityVerified: true,
     replacementDays: 7,
-    variantOptionName: 'Finish',
+    autoBuildVariants: false,
+    variantOptionGroups: [
+      optionGroup('Colour', 'Matte Grey, Gloss White, Beige'),
+      optionGroup('Size', '2×2 ft, 4×4 ft'),
+      optionGroup('Finish', 'Matte, Gloss'),
+    ],
     variants: [
-      variant('Matte Grey', 52, 68, 'matte-grey'),
-      variant('Gloss White', 58, 72, 'gloss-white'),
+      variantCombo({ Colour: 'Matte Grey', Size: '2×2 ft', Finish: 'Matte' }, 52, 68),
+      variantCombo({ Colour: 'Matte Grey', Size: '2×2 ft', Finish: 'Gloss' }, 58, 72),
+      variantCombo({ Colour: 'Matte Grey', Size: '4×4 ft', Finish: 'Matte' }, 198, 250),
+      variantCombo({ Colour: 'Matte Grey', Size: '4×4 ft', Finish: 'Gloss' }, 215, 270),
+      variantCombo({ Colour: 'Gloss White', Size: '2×2 ft', Finish: 'Gloss' }, 58, 72),
+      variantCombo({ Colour: 'Gloss White', Size: '4×4 ft', Finish: 'Gloss' }, 220, 275),
+      variantCombo({ Colour: 'Beige', Size: '2×2 ft', Finish: 'Matte' }, 54, 70),
+      variantCombo({ Colour: 'Beige', Size: '2×2 ft', Finish: 'Gloss' }, 60, 75),
+      variantCombo({ Colour: 'Beige', Size: '4×4 ft', Finish: 'Matte' }, 205, 260),
+      variantCombo({ Colour: 'Beige', Size: '4×4 ft', Finish: 'Gloss' }, 218, 272),
     ],
   },
   {

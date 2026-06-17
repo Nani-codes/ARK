@@ -196,6 +196,15 @@ export const useAddressStore = create<AddressState>()(
       version: 2,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (s) => ({ addresses: s.addresses, selectedId: s.selectedId, cloudSynced: s.cloudSynced }),
+      migrate: (persisted, version) => {
+        if (version < 2) {
+          return {
+            ...(persisted as object),
+            cloudSynced: false,
+          };
+        }
+        return persisted as object;
+      },
     }
   )
 );

@@ -47,7 +47,9 @@ export default {
     if (!res.ok) {
       const errText = await res.text();
       strapi.log.error(`Razorpay order failed: ${errText}`);
-      return ctx.internalServerError('Payment gateway error');
+      return ctx.internalServerError(
+        'Payment gateway error. Check RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET on the server.'
+      );
     }
 
     const order = (await res.json()) as RazorpayOrderResponse;

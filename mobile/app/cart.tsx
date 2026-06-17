@@ -40,7 +40,12 @@ export default function CartScreen() {
         {items.map((item) => (
           <View key={item.lineId} style={styles.line}>
             {item.imageUrl ? (
-              <Image source={{ uri: item.imageUrl }} style={styles.thumb} contentFit="cover" />
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={styles.thumb}
+                contentFit="contain"
+                contentPosition="center"
+              />
             ) : (
               <View style={styles.thumbPlaceholder}>
                 <MaterialIcons name="inventory-2" size={24} color={colors.icon} />
@@ -112,6 +117,7 @@ const styles = StyleSheet.create({
   emptyText: { ...typography.headlineMd, color: colors.onSurfaceVariant },
   line: {
     flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: 12,
     borderWidth: 1,

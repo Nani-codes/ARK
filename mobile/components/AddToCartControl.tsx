@@ -5,13 +5,16 @@ import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 import { getProductVariants } from '@/lib/productPricing';
 import { colors, spacing, typography } from '@/lib/theme';
 import type { Product, ProductVariant } from '@/lib/types';
-import { cartLineId, useCartStore } from '@/stores/cart';
+import { buildCartLine, cartLineId, useCartStore } from '@/stores/cart';
+import { useToastStore } from '@/stores/toast';
 
 type AddToCartControlProps = {
   product: Product;
   variant?: ProductVariant;
   size?: 'sm' | 'md';
   style?: ViewStyle;
+  /** Show Buy Now next to the quantity stepper (product cards) */
+  showBuyNow?: boolean;
   /** Stop card press when used inside ProductCard */
   stopPropagation?: boolean;
 };
@@ -21,13 +24,12 @@ export function AddToCartControl({
   variant: variantProp,
   size = 'sm',
   style,
+  showBuyNow = false,
   stopPropagation = false,
 }: AddToCartControlProps) {
   const variants = getProductVariants(product);
   const variant = variantProp ?? variants[0];
   const lineId = cartLineId(product.documentId, variant.id);
-  const hasMultipleVariants =
-    variants.length > 1 && !(variants.length === 1 && variants[0].id === 'default');
 
   const quantity = useCartStore((s) => s.items.find((i) => i.lineId === lineId)?.quantity ?? 0);
   const addItem = useCartStore((s) => s.addItem);
@@ -40,11 +42,8 @@ export function AddToCartControl({
 
   const handleAdd = () => {
     if (!product.inStock) return;
-    if (hasMultipleVariants && !variantProp) {
-      router.push(`/product/${product.documentId}`);
-      return;
-    }
     addItem(product, { quantity: 1, variant });
+    useToastStore.getState().show('Added to cart');
   };
 
   const handleIncrement = () => {
@@ -58,6 +57,14 @@ export function AddToCartControl({
 
   const handleDecrement = () => {
     updateQuantity(lineId, quantity - 1);
+  };
+
+  const handleBuyNow = () => {
+    if (!product.inStock) return;
+    const checkoutQty = quantity > 0 ? quantity : 1;
+    const item = buildCartLine(product, variant, checkoutQty);
+    const itemsParam = encodeURIComponent(JSON.stringify([item]));
+    router.push(`/checkout?buyNow=true&buyNowItems=${itemsParam}`);
   };
 
   const isMd = size === 'md';
@@ -81,45 +88,70 @@ export function AddToCartControl({
             <Text style={styles.addLabelMd}>ADD</Text>
           </>
         ) : (
-          <>
-            <MaterialIcons name="add" size={20} color={colors.primary} />
-            <Text style={styles.addLabelSm}>ADD</Text>
-          </>
+          <Text style={styles.addLabelSm}>+ ADD</Text>
         )}
       </Pressable>
     );
   }
 
-  return (
+  const stepper = (
     <View
-      style={[
-        isMd ? styles.stepperMd : styles.stepperSm,
-        style,
-      ]}
+      style={[isMd ? styles.stepperMd : styles.stepperSm, style]}
       onStartShouldSetResponder={() => stopPropagation}>
       <Pressable
         style={isMd ? styles.stepBtnMd : styles.stepBtnSm}
         onPress={wrapPress(handleDecrement)}
         hitSlop={8}>
-        <MaterialIcons
-          name="remove"
-          size={isMd ? 22 : 20}
-          color={isMd ? colors.onSecondary : colors.primary}
-        />
+        {isMd ? (
+          <MaterialIcons name="remove" size={22} color={colors.onSecondary} />
+        ) : (
+          <Text style={styles.stepSymbolSm}>−</Text>
+        )}
       </Pressable>
       <Text style={isMd ? styles.qtyMd : styles.qtySm}>{quantity}</Text>
       <Pressable
         style={isMd ? styles.stepBtnMd : styles.stepBtnSm}
         onPress={wrapPress(handleIncrement)}
         hitSlop={8}>
-        <MaterialIcons
-          name="add"
-          size={isMd ? 22 : 20}
-          color={isMd ? colors.onSecondary : colors.primary}
-        />
+        {isMd ? (
+          <MaterialIcons name="add" size={22} color={colors.onSecondary} />
+        ) : (
+          <Text style={styles.stepSymbolSm}>+</Text>
+        )}
       </Pressable>
     </View>
   );
+
+  if (showBuyNow && !isMd) {
+    return (
+      <View
+        style={[styles.cardActionRow, style]}
+        onStartShouldSetResponder={() => stopPropagation}>
+        <View style={[styles.stepperSm, styles.stepperInRow]}>
+          <Pressable
+            style={styles.stepBtnSm}
+            onPress={wrapPress(handleDecrement)}
+            hitSlop={8}>
+            <Text style={styles.stepSymbolSm}>−</Text>
+          </Pressable>
+          <Text style={styles.qtySmInline}>{quantity}</Text>
+          <Pressable
+            style={styles.stepBtnSm}
+            onPress={wrapPress(handleIncrement)}
+            hitSlop={8}>
+            <Text style={styles.stepSymbolSm}>+</Text>
+          </Pressable>
+        </View>
+        <Pressable style={styles.buyNowBtnSm} onPress={wrapPress(handleBuyNow)}>
+          <Text style={styles.buyNowLabelSm} numberOfLines={1}>
+            Buy Now
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return stepper;
 }
 
 const stepperBase = {
@@ -128,7 +160,6 @@ const stepperBase = {
   justifyContent: 'space-between' as const,
   borderWidth: 2,
   borderColor: colors.primary,
-  overflow: 'hidden' as const,
 };
 
 const styles = StyleSheet.create({
@@ -144,14 +175,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   addLabelSm: { ...typography.labelMd, color: colors.primary, fontWeight: '700' },
+  cardActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    width: '100%',
+  },
   stepperSm: {
     ...stepperBase,
     borderRadius: 8,
     backgroundColor: colors.surface,
   },
+  stepperInRow: {
+    flexShrink: 0,
+    width: 92,
+  },
   stepBtnSm: {
-    width: 36,
-    height: 36,
+    width: 28,
+    height: 34,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -159,8 +200,39 @@ const styles = StyleSheet.create({
     ...typography.labelLg,
     color: colors.primary,
     fontWeight: '700',
-    minWidth: 28,
+    flex: 1,
     textAlign: 'center',
+    fontSize: 15,
+  },
+  qtySmInline: {
+    width: 28,
+    textAlign: 'center',
+    ...typography.labelLg,
+    color: colors.primary,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  stepSymbolSm: {
+    color: colors.primary,
+    fontWeight: '700',
+    fontSize: 18,
+    lineHeight: 20,
+  },
+  buyNowBtnSm: {
+    flex: 1,
+    minWidth: 0,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+  },
+  buyNowLabelSm: {
+    ...typography.labelMd,
+    color: colors.onPrimary,
+    fontWeight: '800',
+    fontSize: 10,
   },
   addBtnMd: {
     flex: 1,
@@ -184,6 +256,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: colors.secondary,
     borderColor: colors.secondary,
+    overflow: 'hidden',
   },
   stepBtnMd: {
     width: 48,

@@ -12,6 +12,15 @@ export type ProductVariant = {
   label: string;
   price: number;
   compareAtPrice?: number;
+  /** Per-SKU image; falls back to product.image when unset */
+  image?: StrapiMedia | null;
+  /** Combination map when product has multiple option dimensions */
+  options?: Record<string, string>;
+};
+
+export type VariantOption = {
+  name: string;
+  values: string[];
 };
 
 export type ProductSpec = {
@@ -36,6 +45,7 @@ export type Product = {
   authenticityVerified?: boolean;
   priceUnitLabel?: string;
   variantOptionName?: string;
+  variantOptions?: VariantOption[];
   variants?: ProductVariant[];
   replacementDays?: number;
   bulkPricingEnabled?: boolean;

@@ -3,8 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { calcDeliveryFee, calcSubtotal, calcTaxes, calcTotal } from '@/lib/pricing';
-import { getProductVariants } from '@/lib/productPricing';
-import { mediaUrl } from '@/lib/strapi';
+import { getProductVariants, resolveProductImageUrl } from '@/lib/productPricing';
 import type { OrderItem, Product, ProductVariant } from '@/lib/types';
 
 export type CartLine = {
@@ -21,6 +20,28 @@ export type CartLine = {
 
 export function cartLineId(productDocumentId: string, variantId?: string) {
   return variantId && variantId !== 'default' ? `${productDocumentId}:${variantId}` : productDocumentId;
+}
+
+export function buildCartLine(
+  product: Product,
+  variant: ProductVariant,
+  quantity: number
+): CartLine {
+  const lineId = cartLineId(product.documentId, variant.id);
+  const displayName =
+    variant.id === 'default' ? product.name : `${product.name} (${variant.label})`;
+
+  return {
+    lineId,
+    productDocumentId: product.documentId,
+    variantId: variant.id !== 'default' ? variant.id : undefined,
+    variantLabel: variant.id !== 'default' ? variant.label : undefined,
+    name: displayName,
+    unit: product.unit,
+    unitPrice: Number(variant.price),
+    quantity,
+    imageUrl: resolveProductImageUrl(product, variant),
+  };
 }
 
 type AddItemOptions = {
@@ -57,8 +78,7 @@ export const useCartStore = create<CartState>()(
             ? product.name
             : `${product.name} (${variant.label})`;
 
-        const imagePath = product.image?.url;
-        const imageUrl = mediaUrl(imagePath);
+        const imageUrl = resolveProductImageUrl(product, variant);
 
         const items = [...get().items];
         const idx = items.findIndex((i) => i.lineId === lineId);

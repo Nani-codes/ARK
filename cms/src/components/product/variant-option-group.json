@@ -1,0 +1,19 @@
+{
+  "collectionName": "components_product_variant_option_groups",
+  "info": {
+    "displayName": "Customer choice group",
+    "description": "One type of choice shoppers make — e.g. Colour, Size, or Finish. Write each choice separated by a comma.",
+    "icon": "bulletList"
+  },
+  "options": {},
+  "attributes": {
+    "groupName": {
+      "type": "string",
+      "required": true
+    },
+    "choices": {
+      "type": "text",
+      "required": true
+    }
+  }
+}

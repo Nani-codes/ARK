@@ -18,7 +18,7 @@ import type {
 } from './types';
 
 const PRODUCT_POPULATE =
-  'populate[image]=true&populate[category]=true&populate[variants]=true&populate[specs]=true';
+  'populate[image]=true&populate[category]=true&populate[variants][populate]=image&populate[specs]=true';
 
 export type ProductSearchParams = {
   q?: string;

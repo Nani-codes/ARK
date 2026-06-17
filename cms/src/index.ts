@@ -2,6 +2,8 @@ import type { Core } from '@strapi/strapi';
 
 import { migrateStatusColumns } from './bootstrap/migrate-status-columns';
 import { CATALOG_PRODUCTS } from './data/catalog-seed';
+import { KAJARIA_COLOUR_SWATCHES } from './data/variant-image-assets';
+import { uploadLocalImage } from './utils/seed-media';
 import { HYDERABAD_PINCODES } from './data/hyderabad-pincodes';
 
 const PUBLIC_ACTIONS = [
@@ -236,6 +238,119 @@ async function seedSupplementalProducts(strapi: Core.Strapi) {
   }
 }
 
+async function patchMultiVariantCatalog(strapi: Core.Strapi) {
+  const multiVariantSlugs = ['kajaria-vitrified-tile'] as const;
+
+  for (const slug of multiVariantSlugs) {
+    const seed = CATALOG_PRODUCTS.find((p) => p.slug === slug);
+    if (!seed?.variantOptionGroups?.length || !seed.variants?.length) continue;
+
+    const existing = await strapi.db.query('api::product.product').findOne({ where: { slug } });
+    if (!existing?.documentId) continue;
+
+    const hasGroups =
+      Array.isArray(existing.variantOptionGroups) && existing.variantOptionGroups.length > 0;
+    if (hasGroups) continue;
+
+    const { categorySlug: _slug, ...productData } = seed;
+    await strapi.documents('api::product.product').update({
+      documentId: existing.documentId,
+      data: {
+        variantOptionGroups: productData.variantOptionGroups,
+        autoBuildVariants: productData.autoBuildVariants ?? false,
+        variants: productData.variants,
+        price: productData.price,
+        compareAtPrice: productData.compareAtPrice,
+      },
+    });
+    strapi.log.info(`Patched multi-variant options for ${slug}`);
+  }
+}
+
+type VariantRowDb = {
+  label?: string;
+  optionKey?: string;
+  price?: number;
+  compareAtPrice?: number;
+  image?: { id?: number } | number | null;
+  choices?: Array<{ groupName?: string; choice?: string }>;
+  options?: Record<string, string>;
+};
+
+function choiceValue(row: VariantRowDb, groupName: string): string | undefined {
+  const fromChoices = row.choices?.find((c) => c.groupName === groupName)?.choice?.trim();
+  if (fromChoices) return fromChoices;
+  return row.options?.[groupName]?.trim();
+}
+
+/** Attach per-colour swatch images to Kajaria tile variants (for Flipkart-style picker). */
+async function patchVariantSwatchImages(strapi: Core.Strapi) {
+  const slug = 'kajaria-vitrified-tile';
+  const existing = await strapi.db.query('api::product.product').findOne({
+    where: { slug },
+    populate: {
+      variants: {
+        populate: ['image', 'choices'],
+      },
+    },
+  });
+
+  if (!existing?.documentId) return;
+
+  const variants = (existing.variants ?? []) as VariantRowDb[];
+  if (!variants.length) return;
+
+  const hasImages = variants.some((v) => {
+    if (!v.image) return false;
+    if (typeof v.image === 'number') return true;
+    return Boolean(v.image.id);
+  });
+  if (hasImages) return;
+
+  const mediaByColour: Record<string, number> = {};
+  for (const [colour, meta] of Object.entries(KAJARIA_COLOUR_SWATCHES)) {
+    const id = await uploadLocalImage(
+      strapi,
+      meta.file,
+      meta.fileName,
+      meta.mime,
+      meta.alt
+    );
+    if (id) mediaByColour[colour] = id;
+  }
+
+  if (!Object.keys(mediaByColour).length) {
+    strapi.log.warn('patchVariantSwatchImages: no images uploaded');
+    return;
+  }
+
+  const nextVariants = variants.map((row) => {
+    const colour = choiceValue(row, 'Colour');
+    const imageId = colour ? mediaByColour[colour] : undefined;
+    const payload: Record<string, unknown> = {
+      label: row.label,
+      optionKey: row.optionKey,
+      price: row.price,
+      compareAtPrice: row.compareAtPrice,
+      choices: row.choices,
+    };
+    if (imageId) payload.image = imageId;
+    return payload;
+  });
+
+  const heroImageId = mediaByColour['Matte Grey'] ?? Object.values(mediaByColour)[0];
+
+  await strapi.documents('api::product.product').update({
+    documentId: existing.documentId,
+    data: {
+      variants: nextVariants as never,
+      image: heroImageId,
+    },
+  });
+
+  strapi.log.info(`Patched variant swatch images for ${slug}`);
+}
+
 export default {
   register() {},
 
@@ -245,5 +360,7 @@ export default {
     await seedAppConfig(strapi);
     await seedPincodes(strapi);
     await seedData(strapi);
+    await patchMultiVariantCatalog(strapi);
+    await patchVariantSwatchImages(strapi);
   },
 };
