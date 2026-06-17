@@ -84,6 +84,8 @@ export default function CategoryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   brandRow: {
+    flexGrow: 0,
+    flexShrink: 0,
     paddingVertical: spacing.unit2,
     width: '100%',
     maxWidth: 720,

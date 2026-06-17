@@ -43,8 +43,10 @@ export function AddToCartControl({
     fn();
   };
 
+  const isOutOfStock = combination ? combination.stock <= 0 : !product.inStock;
+
   const handleAdd = () => {
-    if (!product.inStock) return;
+    if (isOutOfStock) return;
     if (hasMultipleVariants && !variantProp && !combination) {
       router.push(`/product/${product.documentId}`);
       return;
@@ -53,7 +55,7 @@ export function AddToCartControl({
   };
 
   const handleIncrement = () => {
-    if (!product.inStock) return;
+    if (isOutOfStock) return;
     if (quantity === 0) {
       addItem(product, { quantity: 1, variant, combination });
     } else {
@@ -67,7 +69,7 @@ export function AddToCartControl({
 
   const isMd = size === 'md';
 
-  if (!product.inStock) {
+  if (isOutOfStock) {
     return (
       <View style={[isMd ? styles.outOfStockMd : styles.outOfStockSm, style]}>
         <Text style={isMd ? styles.outOfStockTextMd : styles.outOfStockTextSm}>OUT OF STOCK</Text>

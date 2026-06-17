@@ -170,6 +170,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scrollRoot: { flex: 1 },
   content: {
+    flexGrow: 1,
     width: '100%',
     maxWidth: 720,
     alignSelf: 'center',
@@ -191,10 +192,12 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, ...typography.bodyMd, color: colors.onSurface, padding: 0 },
   sortRow: {
+    flexGrow: 0,
     flexShrink: 0,
     marginBottom: spacing.unit2,
   },
   brandRow: {
+    flexGrow: 0,
     flexShrink: 0,
     marginBottom: spacing.unit3,
   },
@@ -214,7 +217,7 @@ const styles = StyleSheet.create({
   chipActive: { borderColor: colors.secondary, backgroundColor: colors.secondaryContainer },
   chipText: { ...typography.labelMd, color: colors.onSurfaceVariant },
   chipTextActive: { color: colors.primary, fontWeight: '700' },
-  hint: { alignItems: 'center', paddingTop: 80, gap: spacing.unit3 },
+  hint: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 80, gap: spacing.unit3 },
   hintText: { ...typography.bodyMd, color: colors.onSurfaceVariant },
   empty: { ...typography.bodyLg, color: colors.onSurfaceVariant, textAlign: 'center', marginTop: 40 },
   list: { gap: spacing.unit4 },
