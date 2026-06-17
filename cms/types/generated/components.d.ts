@@ -18,6 +18,7 @@ export interface OrderOrderItem extends Struct.ComponentSchema {
         },
         number
       >;
+    sku: Schema.Attribute.String;
     unit: Schema.Attribute.String;
     unitPrice: Schema.Attribute.Decimal & Schema.Attribute.Required;
     variantId: Schema.Attribute.String;
@@ -66,12 +67,65 @@ export interface ProductProductVariant extends Struct.ComponentSchema {
   };
 }
 
+export interface ProductVariantAxis extends Struct.ComponentSchema {
+  collectionName: 'components_product_variant_axes';
+  info: {
+    description: 'A variant dimension (e.g. Color, Size). Values are comma-separated.';
+    displayName: 'Variant Axis';
+    icon: 'apps';
+  };
+  attributes: {
+    axisName: Schema.Attribute.String & Schema.Attribute.Required;
+    values: Schema.Attribute.Text & Schema.Attribute.Required;
+  };
+}
+
+export interface ProductVariantCombination extends Struct.ComponentSchema {
+  collectionName: 'components_product_variant_combinations';
+  info: {
+    description: 'One purchasable combination (e.g. Red / 12x12). Each row is a unique SKU.';
+    displayName: 'Variant Combination';
+    icon: 'grid';
+  };
+  attributes: {
+    axisValues: Schema.Attribute.String & Schema.Attribute.Required;
+    compareAtPrice: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    image: Schema.Attribute.Media<'images'>;
+    price: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    sku: Schema.Attribute.String & Schema.Attribute.Required;
+    stock: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+  };
+}
+
 declare module '@strapi/strapi' {
   export module Public {
     export interface ComponentSchemas {
       'order.order-item': OrderOrderItem;
       'product.product-spec': ProductProductSpec;
       'product.product-variant': ProductProductVariant;
+      'product.variant-axis': ProductVariantAxis;
+      'product.variant-combination': ProductVariantCombination;
     }
   }
 }

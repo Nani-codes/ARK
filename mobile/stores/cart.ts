@@ -10,6 +10,7 @@ import type { OrderItem, Product, ProductVariant } from '@/lib/types';
 export type CartLine = {
   lineId: string;
   productDocumentId: string;
+  sku?: string;
   variantId?: string;
   variantLabel?: string;
   name: string;
@@ -19,13 +20,15 @@ export type CartLine = {
   imageUrl?: string;
 };
 
-export function cartLineId(productDocumentId: string, variantId?: string) {
+export function cartLineId(productDocumentId: string, variantId?: string, sku?: string) {
+  if (sku) return `${productDocumentId}:${sku}`;
   return variantId && variantId !== 'default' ? `${productDocumentId}:${variantId}` : productDocumentId;
 }
 
 type AddItemOptions = {
   quantity?: number;
   variant?: ProductVariant;
+  combination?: import('@/lib/types').VariantCombination | null;
 };
 
 type CartState = {
@@ -49,15 +52,38 @@ export const useCartStore = create<CartState>()(
 
       addItem: (product, options = {}) => {
         const quantity = options.quantity ?? 1;
-        const variants = getProductVariants(product);
-        const variant = options.variant ?? variants[0];
-        const lineId = cartLineId(product.documentId, variant.id);
-        const displayName =
-          variant.id === 'default'
-            ? product.name
-            : `${product.name} (${variant.label})`;
+        
+        let lineId: string;
+        let displayName: string;
+        let variantId: string | undefined;
+        let variantLabel: string | undefined;
+        let sku: string | undefined;
+        let unitPrice: number;
+        let imagePath = product.image?.url;
 
-        const imagePath = product.image?.url;
+        if (options.combination) {
+          const combo = options.combination;
+          sku = combo.sku;
+          lineId = cartLineId(product.documentId, undefined, sku);
+          variantLabel = combo.axisValues.join(' / ');
+          displayName = `${product.name} (${variantLabel})`;
+          unitPrice = Number(combo.price);
+          if (combo.image?.url) {
+            imagePath = combo.image.url;
+          }
+        } else {
+          const variants = getProductVariants(product);
+          const variant = options.variant ?? variants[0];
+          lineId = cartLineId(product.documentId, variant.id);
+          displayName =
+            variant.id === 'default'
+              ? product.name
+              : `${product.name} (${variant.label})`;
+          variantId = variant.id !== 'default' ? variant.id : undefined;
+          variantLabel = variant.id !== 'default' ? variant.label : undefined;
+          unitPrice = Number(variant.price);
+        }
+
         const imageUrl = mediaUrl(imagePath);
 
         const items = [...get().items];
@@ -69,11 +95,12 @@ export const useCartStore = create<CartState>()(
           items.push({
             lineId,
             productDocumentId: product.documentId,
-            variantId: variant.id !== 'default' ? variant.id : undefined,
-            variantLabel: variant.id !== 'default' ? variant.label : undefined,
+            sku,
+            variantId,
+            variantLabel,
             name: displayName,
             unit: product.unit,
-            unitPrice: Number(variant.price),
+            unitPrice,
             quantity,
             imageUrl,
           });
@@ -99,8 +126,9 @@ export const useCartStore = create<CartState>()(
 
       reorderLines: (lines) => {
         const items = lines.map((line) => ({
-          lineId: cartLineId(line.productDocumentId ?? line.productName, line.variantId),
+          lineId: cartLineId(line.productDocumentId ?? line.productName, line.variantId, line.sku),
           productDocumentId: line.productDocumentId ?? line.productName,
+          sku: line.sku,
           variantId: line.variantId,
           variantLabel: line.variantLabel,
           name: line.productName,

@@ -1,0 +1,38 @@
+{
+  "collectionName": "components_product_variant_combinations",
+  "info": {
+    "displayName": "Variant Combination",
+    "description": "One purchasable combination (e.g. Red / 12x12). Each row is a unique SKU.",
+    "icon": "grid"
+  },
+  "attributes": {
+    "sku": {
+      "type": "string",
+      "required": true
+    },
+    "axisValues": {
+      "type": "string",
+      "required": true
+    },
+    "price": {
+      "type": "decimal",
+      "required": true,
+      "min": 0
+    },
+    "compareAtPrice": {
+      "type": "decimal",
+      "min": 0
+    },
+    "stock": {
+      "type": "integer",
+      "required": true,
+      "default": 0,
+      "min": 0
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"]
+    }
+  }
+}

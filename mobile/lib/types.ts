@@ -14,6 +14,20 @@ export type ProductVariant = {
   compareAtPrice?: number;
 };
 
+export type VariantAxis = {
+  axisName: string;
+  values: string[];
+};
+
+export type VariantCombination = {
+  sku: string;
+  axisValues: string[];
+  price: number;
+  compareAtPrice?: number;
+  stock: number;
+  image?: StrapiMedia | null;
+};
+
 export type ProductSpec = {
   label: string;
   value: string;
@@ -37,6 +51,8 @@ export type Product = {
   priceUnitLabel?: string;
   variantOptionName?: string;
   variants?: ProductVariant[];
+  variantAxes?: VariantAxis[];
+  variantCombinations?: VariantCombination[];
   replacementDays?: number;
   bulkPricingEnabled?: boolean;
   brand?: string;
@@ -54,6 +70,7 @@ export type StrapiMedia = {
 export type OrderItem = {
   productName: string;
   productDocumentId?: string;
+  sku?: string;
   variantId?: string;
   variantLabel?: string;
   unit?: string;

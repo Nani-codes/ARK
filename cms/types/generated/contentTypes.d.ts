@@ -696,6 +696,11 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    variantAxes: Schema.Attribute.Component<'product.variant-axis', true>;
+    variantCombinations: Schema.Attribute.Component<
+      'product.variant-combination',
+      true
+    >;
     variantOptionName: Schema.Attribute.String &
       Schema.Attribute.DefaultTo<'Size'>;
     variants: Schema.Attribute.Component<'product.product-variant', true>;

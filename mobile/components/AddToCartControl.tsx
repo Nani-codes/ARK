@@ -4,12 +4,13 @@ import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 
 import { getProductVariants } from '@/lib/productPricing';
 import { colors, spacing, typography } from '@/lib/theme';
-import type { Product, ProductVariant } from '@/lib/types';
+import type { Product, ProductVariant, VariantCombination } from '@/lib/types';
 import { cartLineId, useCartStore } from '@/stores/cart';
 
 type AddToCartControlProps = {
   product: Product;
   variant?: ProductVariant;
+  combination?: VariantCombination | null;
   size?: 'sm' | 'md';
   style?: ViewStyle;
   /** Stop card press when used inside ProductCard */
@@ -19,15 +20,19 @@ type AddToCartControlProps = {
 export function AddToCartControl({
   product,
   variant: variantProp,
+  combination,
   size = 'sm',
   style,
   stopPropagation = false,
 }: AddToCartControlProps) {
   const variants = getProductVariants(product);
   const variant = variantProp ?? variants[0];
-  const lineId = cartLineId(product.documentId, variant.id);
+  const lineId = combination 
+    ? cartLineId(product.documentId, undefined, combination.sku) 
+    : cartLineId(product.documentId, variant.id);
   const hasMultipleVariants =
-    variants.length > 1 && !(variants.length === 1 && variants[0].id === 'default');
+    (variants.length > 1 && !(variants.length === 1 && variants[0].id === 'default')) ||
+    (product.variantAxes && product.variantAxes.length > 0);
 
   const quantity = useCartStore((s) => s.items.find((i) => i.lineId === lineId)?.quantity ?? 0);
   const addItem = useCartStore((s) => s.addItem);
@@ -40,17 +45,17 @@ export function AddToCartControl({
 
   const handleAdd = () => {
     if (!product.inStock) return;
-    if (hasMultipleVariants && !variantProp) {
+    if (hasMultipleVariants && !variantProp && !combination) {
       router.push(`/product/${product.documentId}`);
       return;
     }
-    addItem(product, { quantity: 1, variant });
+    addItem(product, { quantity: 1, variant, combination });
   };
 
   const handleIncrement = () => {
     if (!product.inStock) return;
     if (quantity === 0) {
-      addItem(product, { quantity: 1, variant });
+      addItem(product, { quantity: 1, variant, combination });
     } else {
       updateQuantity(lineId, quantity + 1);
     }

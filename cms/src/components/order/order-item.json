@@ -13,6 +13,9 @@
     "productDocumentId": {
       "type": "string"
     },
+    "sku": {
+      "type": "string"
+    },
     "variantId": {
       "type": "string"
     },

@@ -18,7 +18,7 @@ import type {
 } from './types';
 
 const PRODUCT_POPULATE =
-  'populate[image]=true&populate[category]=true&populate[variants]=true&populate[specs]=true';
+  'populate[image]=true&populate[category]=true&populate[variants]=true&populate[specs]=true&populate[variantAxes]=true&populate[variantCombinations][populate][image]=true';
 
 export type ProductSearchParams = {
   q?: string;
@@ -72,14 +72,14 @@ export function fetchCategories() {
 export async function fetchProducts(params?: ProductSearchParams) {
   const search = buildProductQuery(params);
   const res = await strapiFetch<StrapiListResponse<Product>>(`/api/products?${search}`);
-  return { ...res, data: res.data.map(normalizeProduct) };
+  return { ...res, data: res.data.map((p) => normalizeProduct(p as any)) };
 }
 
 export async function fetchProduct(documentId: string) {
   const res = await strapiFetch<StrapiSingleResponse<Product>>(
     `/api/products/${documentId}?${PRODUCT_POPULATE}`
   );
-  return { ...res, data: normalizeProduct(res.data) };
+  return { ...res, data: normalizeProduct(res.data as any) };
 }
 
 export async function fetchAppConfig() {
@@ -108,6 +108,7 @@ export function createOrder(payload: {
   items: Array<{
     productName: string;
     productDocumentId?: string;
+    sku?: string;
     variantId?: string;
     variantLabel?: string;
     quantity: number;

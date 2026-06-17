@@ -69,6 +69,16 @@
       "repeatable": true,
       "component": "product.product-spec"
     },
+    "variantAxes": {
+      "type": "component",
+      "repeatable": true,
+      "component": "product.variant-axis"
+    },
+    "variantCombinations": {
+      "type": "component",
+      "repeatable": true,
+      "component": "product.variant-combination"
+    },
     "replacementDays": {
       "type": "integer",
       "default": 7,

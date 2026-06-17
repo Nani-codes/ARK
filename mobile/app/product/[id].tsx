@@ -15,13 +15,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AddToCartControl } from '@/components/AddToCartControl';
 import { AppHeader } from '@/components/AppHeader';
+import { MultiVariantPicker } from '@/components/MultiVariantPicker';
 import { ProductPriceBlock } from '@/components/ProductPriceBlock';
 import { VariantPicker } from '@/components/VariantPicker';
 import { fetchProduct } from '@/lib/api';
 import { formatInr, getProductDisplayPricing, getProductVariants } from '@/lib/productPricing';
 import { mediaUrl } from '@/lib/strapi';
 import { colors, spacing, typography } from '@/lib/theme';
-import type { ProductVariant } from '@/lib/types';
+import type { ProductVariant, VariantCombination } from '@/lib/types';
 import { cartLineId, useCartStore } from '@/stores/cart';
 
 export default function ProductDetailScreen() {
@@ -39,14 +40,25 @@ export default function ProductDetailScreen() {
     () => (product ? getProductVariants(product) : []),
     [product]
   );
+  
+  const isMultiVariant = !!product?.variantAxes?.length && !!product?.variantCombinations?.length;
 
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [selectedCombination, setSelectedCombination] = useState<VariantCombination | null>(null);
 
   useEffect(() => {
-    if (variants.length) setSelectedVariant(variants[0]);
-  }, [product?.documentId, variants]);
+    if (isMultiVariant) {
+      if (product.variantCombinations?.length) {
+        // Find first in-stock combination, fallback to first overall
+        const inStockCombo = product.variantCombinations.find((c) => c.stock > 0);
+        setSelectedCombination(inStockCombo || product.variantCombinations[0]);
+      }
+    } else if (variants.length) {
+      setSelectedVariant(variants[0]);
+    }
+  }, [product?.documentId, variants, isMultiVariant, product?.variantCombinations]);
 
-  if (isLoading || !product || !selectedVariant) {
+  if (isLoading || !product || (!isMultiVariant && !selectedVariant) || (isMultiVariant && !selectedCombination)) {
     return (
       <View style={styles.loading}>
         <AppHeader showBack showLocation={false} showSearch />
@@ -55,37 +67,57 @@ export default function ProductDetailScreen() {
     );
   }
 
-  const uri = mediaUrl(product.image?.url);
+  const activeImage = isMultiVariant && selectedCombination?.image?.url ? selectedCombination.image.url : product.image?.url;
+  const uri = mediaUrl(activeImage);
   const specs = product.specs ?? [];
-  const { price, compareAtPrice, percent } = getProductDisplayPricing(product, selectedVariant);
+  const { price, compareAtPrice, percent } = getProductDisplayPricing(product, selectedVariant ?? undefined, isMultiVariant ? selectedCombination : null);
   const variantLabel = product.variantOptionName ?? 'Size';
   const replacementDays = product.replacementDays ?? 7;
-  const minVariantPrice = Math.min(...getProductVariants(product).map((v) => v.price));
+  const minVariantPrice = isMultiVariant 
+    ? Math.min(...(product.variantCombinations?.map((c) => Number(c.price)) || [0]))
+    : Math.min(...getProductVariants(product).map((v) => v.price));
   const unitLabel = product.priceUnitLabel ?? (product.unit === 'Sq Ft' ? '₹/ft²' : `/${product.unit}`);
 
   const handleBuyNow = () => {
-    if (!product || !selectedVariant) return;
+    if (!product || (!isMultiVariant && !selectedVariant) || (isMultiVariant && !selectedCombination)) return;
 
-    const displayName =
-      selectedVariant.id === 'default'
-        ? product.name
-        : `${product.name} (${selectedVariant.label})`;
+    let displayName = product.name;
+    let variantId: string | undefined;
+    let variantLabelParam: string | undefined;
+    let sku: string | undefined;
+    let unitPrice = 0;
+    
+    if (isMultiVariant && selectedCombination) {
+      sku = selectedCombination.sku;
+      variantLabelParam = selectedCombination.axisValues.join(' / ');
+      displayName = `${product.name} (${variantLabelParam})`;
+      unitPrice = Number(selectedCombination.price);
+    } else if (selectedVariant) {
+      displayName = selectedVariant.id === 'default' ? product.name : `${product.name} (${selectedVariant.label})`;
+      variantId = selectedVariant.id !== 'default' ? selectedVariant.id : undefined;
+      variantLabelParam = selectedVariant.id !== 'default' ? selectedVariant.label : undefined;
+      unitPrice = Number(selectedVariant.price);
+    }
 
-    const imagePath = product.image?.url;
+    const imagePath = isMultiVariant && selectedCombination?.image?.url ? selectedCombination.image.url : product.image?.url;
     const imageUrl = mediaUrl(imagePath);
 
-    const lineId = cartLineId(product.documentId, selectedVariant.id);
+    const lineId = isMultiVariant && selectedCombination 
+      ? cartLineId(product.documentId, undefined, selectedCombination.sku)
+      : cartLineId(product.documentId, selectedVariant?.id);
+      
     const cartQty = useCartStore.getState().items.find((i) => i.lineId === lineId)?.quantity ?? 0;
     const checkoutQty = cartQty > 0 ? cartQty : 1;
 
     const item = {
       lineId,
       productDocumentId: product.documentId,
-      variantId: selectedVariant.id !== 'default' ? selectedVariant.id : undefined,
-      variantLabel: selectedVariant.id !== 'default' ? selectedVariant.label : undefined,
+      sku,
+      variantId,
+      variantLabel: variantLabelParam,
       name: displayName,
       unit: product.unit,
-      unitPrice: Number(selectedVariant.price),
+      unitPrice,
       quantity: checkoutQty,
       imageUrl,
     };
@@ -115,7 +147,13 @@ export default function ProductDetailScreen() {
         </View>
 
         <View style={styles.content}>
-          {product.inStock ? (
+          {isMultiVariant && selectedCombination ? (
+            selectedCombination.stock > 0 ? (
+              <View style={styles.stockTag}>
+                <Text style={styles.stockText}>IN-STOCK</Text>
+              </View>
+            ) : null
+          ) : product.inStock ? (
             <View style={styles.stockTag}>
               <Text style={styles.stockText}>IN-STOCK</Text>
             </View>
@@ -129,7 +167,7 @@ export default function ProductDetailScreen() {
             percent={percent}
             size="lg"
           />
-          {getProductVariants(product).length > 1 ? (
+          {(isMultiVariant && product.variantCombinations && product.variantCombinations.length > 1) || (!isMultiVariant && getProductVariants(product).length > 1) ? (
             <Text style={styles.startsAt}>
               Starts at {formatInr(minVariantPrice)}
               {unitLabel}
@@ -172,12 +210,21 @@ export default function ProductDetailScreen() {
             </Pressable>
           ) : null}
 
-          <VariantPicker
-            label={variantLabel}
-            variants={variants}
-            selectedId={selectedVariant.id}
-            onSelect={setSelectedVariant}
-          />
+          {isMultiVariant && product.variantAxes && product.variantCombinations ? (
+            <MultiVariantPicker
+              axes={product.variantAxes}
+              combinations={product.variantCombinations}
+              selectedCombination={selectedCombination}
+              onSelect={setSelectedCombination}
+            />
+          ) : (
+            <VariantPicker
+              label={variantLabel}
+              variants={variants}
+              selectedId={selectedVariant?.id || ''}
+              onSelect={setSelectedVariant}
+            />
+          )}
 
           {specs.length > 0 ? (
             <>
@@ -204,11 +251,12 @@ export default function ProductDetailScreen() {
         <View style={styles.buttonRow}>
           <AddToCartControl
             product={product}
-            variant={selectedVariant}
+            variant={selectedVariant ?? undefined}
+            combination={isMultiVariant ? selectedCombination : null}
             size="md"
             style={styles.stickyControl}
           />
-          {product.inStock ? (
+          {(isMultiVariant && selectedCombination && selectedCombination.stock > 0) || (!isMultiVariant && product.inStock) ? (
             <Pressable
               style={styles.buyNowBtn}
               onPress={handleBuyNow}>

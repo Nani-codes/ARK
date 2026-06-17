@@ -1,4 +1,4 @@
-import type { Product, ProductVariant } from '@/lib/types';
+import type { Product, ProductVariant, VariantCombination } from '@/lib/types';
 
 export function formatInr(amount: number): string {
   return `₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
@@ -29,7 +29,31 @@ export function getVariantPricing(variant: ProductVariant) {
   return { price, compareAtPrice, percent };
 }
 
-export function getProductDisplayPricing(product: Product, variant?: ProductVariant) {
+export function getCombinationPricing(combination: VariantCombination) {
+  const price = Number(combination.price);
+  const compareAtPrice = combination.compareAtPrice ? Number(combination.compareAtPrice) : null;
+  const percent = discountPercent(price, compareAtPrice);
+  return { price, compareAtPrice, percent };
+}
+
+export function getProductDisplayPricing(
+  product: Product,
+  variant?: ProductVariant,
+  combination?: VariantCombination | null
+) {
+  if (combination) {
+    const { price, compareAtPrice, percent } = getCombinationPricing(combination);
+    const baseCompare = product.compareAtPrice ? Number(product.compareAtPrice) : null;
+    const displayPercent = percent ?? discountPercent(price, compareAtPrice ?? baseCompare);
+    return {
+      variant: undefined,
+      combination,
+      price,
+      compareAtPrice: compareAtPrice ?? baseCompare,
+      percent: displayPercent,
+    };
+  }
+
   const variants = getProductVariants(product);
   const selected = variant ?? variants[0];
   const { price, compareAtPrice, percent } = getVariantPricing(selected);
@@ -38,8 +62,10 @@ export function getProductDisplayPricing(product: Product, variant?: ProductVari
     percent ?? discountPercent(price, compareAtPrice ?? baseCompare);
   return {
     variant: selected,
+    combination: undefined,
     price,
     compareAtPrice: compareAtPrice ?? baseCompare,
     percent: displayPercent,
   };
 }
+

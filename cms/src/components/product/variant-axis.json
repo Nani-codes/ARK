@@ -1,0 +1,18 @@
+{
+  "collectionName": "components_product_variant_axes",
+  "info": {
+    "displayName": "Variant Axis",
+    "description": "A variant dimension (e.g. Color, Size). Values are comma-separated.",
+    "icon": "apps"
+  },
+  "attributes": {
+    "axisName": {
+      "type": "string",
+      "required": true
+    },
+    "values": {
+      "type": "text",
+      "required": true
+    }
+  }
+}
