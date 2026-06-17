@@ -70,7 +70,7 @@ export function normalizeProduct(raw: RawProduct): Product {
     ...raw,
     price: Number(raw.price),
     compareAtPrice:
-      raw.compareAtPrice != null && raw.compareAtPrice !== ''
+      raw.compareAtPrice != null && (raw.compareAtPrice as any) !== ''
         ? Number(raw.compareAtPrice)
         : null,
     variants: normalizeVariants(raw.variants as StrapiVariantRow[]),

@@ -6,6 +6,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 
 import { AddressCard } from '@/components/AddressCard';
 import { AppHeader } from '@/components/AppHeader';
+import { DeliverySelectorModal } from '@/components/DeliverySelectorModal';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeader } from '@/components/SectionHeader';
 import { createOrder } from '@/lib/api';
@@ -48,11 +49,31 @@ export default function CheckoutScreen() {
 
   const [payment, setPayment] = useState<PaymentMethod>('cod');
   const [deliverySlot, setDeliverySlot] = useState<DeliverySlot>('asap');
+  const [selectorVisible, setSelectorVisible] = useState(false);
+  const [isServiceable, setIsServiceable] = useState<boolean | null>(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
     void loadServiceablePincodes();
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    const checkServiceability = async () => {
+      if (!selectedAddress) {
+        setIsServiceable(null);
+        return;
+      }
+      const ok = await isPincodeServiceable(selectedAddress.pincode);
+      if (active) {
+        setIsServiceable(ok);
+      }
+    };
+    checkServiceability();
+    return () => {
+      active = false;
+    };
+  }, [selectedAddress]);
 
   const codDisabled = total > COD_MAX_TOTAL;
 
@@ -108,8 +129,13 @@ export default function CheckoutScreen() {
     placeOrder.mutate();
   };
 
+  useEffect(() => {
+    if (items.length === 0) {
+      router.replace('/cart');
+    }
+  }, [items.length]);
+
   if (items.length === 0) {
-    router.replace('/cart');
     return null;
   }
 
@@ -123,13 +149,21 @@ export default function CheckoutScreen() {
         {selectedAddress ? (
           <View>
             <AddressCard address={selectedAddress} />
-            <Pressable style={styles.changeBtn} onPress={() => router.push('/address/select')}>
+            {isServiceable === false && (
+              <View style={styles.unserviceableWarning}>
+                <MaterialIcons name="error" size={20} color={colors.onError} />
+                <Text style={styles.unserviceableText}>
+                  We do not deliver to pincode {selectedAddress.pincode} yet. Please choose another address.
+                </Text>
+              </View>
+            )}
+            <Pressable style={styles.changeBtn} onPress={() => setSelectorVisible(true)}>
               <MaterialIcons name="edit-location-alt" size={16} color={colors.secondary} />
               <Text style={styles.changeBtnText}>Change Address</Text>
             </Pressable>
           </View>
         ) : (
-          <Pressable style={styles.emptyAddress} onPress={() => router.push('/address/select')}>
+          <Pressable style={styles.emptyAddress} onPress={() => setSelectorVisible(true)}>
             <MaterialIcons name="add-location-alt" size={28} color={colors.secondary} />
             <View style={{ flex: 1 }}>
               <Text style={styles.emptyAddressTitle}>Select Delivery Address</Text>
@@ -140,35 +174,52 @@ export default function CheckoutScreen() {
         )}
 
         <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>DELIVERY SLOT</Text>
-        {SLOT_OPTIONS.map((slot) => (
-          <Pressable
-            key={slot.key}
-            style={[styles.payOption, deliverySlot === slot.key && styles.payOptionActive]}
-            onPress={() => setDeliverySlot(slot.key)}>
-            <View style={styles.radio}>
-              {deliverySlot === slot.key ? <View style={styles.radioDot} /> : null}
-            </View>
-            <View style={styles.payText}>
-              <Text style={styles.payTitle}>{slot.label}</Text>
-              <Text style={styles.paySub}>{slot.sub}</Text>
-            </View>
-          </Pressable>
-        ))}
+        {SLOT_OPTIONS.map((slot) => {
+          const disabled = isServiceable === false;
+          return (
+            <Pressable
+              key={slot.key}
+              style={[
+                styles.payOption,
+                (deliverySlot === slot.key && !disabled) ? styles.payOptionActive : null,
+                disabled ? styles.payOptionDisabled : null,
+              ]}
+              onPress={() => !disabled && setDeliverySlot(slot.key)}
+              disabled={disabled}>
+              <View style={styles.radio}>
+                {deliverySlot === slot.key && !disabled ? <View style={styles.radioDot} /> : null}
+              </View>
+              <View style={styles.payText}>
+                <Text style={[styles.payTitle, disabled && styles.payTitleDisabled]}>{slot.label}</Text>
+                <Text style={styles.paySub}>
+                  {disabled ? 'Delivery options unavailable' : slot.sub}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
 
         <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>SELECT PAYMENT METHOD</Text>
 
         <Pressable
-          style={[styles.payOption, payment === 'neft' && styles.payOptionActive]}
-          onPress={() => setPayment('neft')}>
-          <View style={styles.radio}>{payment === 'neft' ? <View style={styles.radioDot} /> : null}</View>
+          style={[
+            styles.payOption,
+            (payment === 'neft' && isServiceable !== false) ? styles.payOptionActive : null,
+            (isServiceable === false) ? styles.payOptionDisabled : null,
+          ]}
+          onPress={() => isServiceable !== false && setPayment('neft')}
+          disabled={isServiceable === false}>
+          <View style={styles.radio}>{payment === 'neft' && isServiceable !== false ? <View style={styles.radioDot} /> : null}</View>
           <View style={styles.payText}>
-            <Text style={styles.payTitle}>Bank Transfer (NEFT/RTGS)</Text>
-            <Text style={styles.paySub}>Faster verification for bulk orders</Text>
+            <Text style={[styles.payTitle, isServiceable === false && styles.payTitleDisabled]}>Bank Transfer (NEFT/RTGS)</Text>
+            <Text style={styles.paySub}>
+              {isServiceable === false ? 'Payment options unavailable' : 'Faster verification for bulk orders'}
+            </Text>
           </View>
-          <MaterialIcons name="account-balance" size={28} color={colors.icon} />
+          <MaterialIcons name="account-balance" size={28} color={isServiceable === false ? colors.iconMuted : colors.icon} />
         </Pressable>
 
-        {payment === 'neft' ? (
+        {payment === 'neft' && isServiceable !== false ? (
           <View style={styles.neftBox}>
             <Text style={styles.neftTitle}>Transfer to:</Text>
             <Text style={styles.neftLine}>{NEFT_BANK_DETAILS.accountName}</Text>
@@ -188,23 +239,25 @@ export default function CheckoutScreen() {
         <Pressable
           style={[
             styles.payOption,
-            payment === 'cod' && styles.payOptionActive,
-            codDisabled && styles.payOptionDisabled,
+            (payment === 'cod' && isServiceable !== false) ? styles.payOptionActive : null,
+            (codDisabled || isServiceable === false) ? styles.payOptionDisabled : null,
           ]}
-          onPress={() => !codDisabled && setPayment('cod')}
-          disabled={codDisabled}>
-          <View style={styles.radio}>{payment === 'cod' ? <View style={styles.radioDot} /> : null}</View>
+          onPress={() => !codDisabled && isServiceable !== false && setPayment('cod')}
+          disabled={codDisabled || isServiceable === false}>
+          <View style={styles.radio}>{payment === 'cod' && isServiceable !== false ? <View style={styles.radioDot} /> : null}</View>
           <View style={styles.payText}>
-            <Text style={[styles.payTitle, codDisabled && styles.payTitleDisabled]}>
+            <Text style={[styles.payTitle, (codDisabled || isServiceable === false) && styles.payTitleDisabled]}>
               Cash on Delivery (COD)
             </Text>
             <Text style={styles.paySub}>
-              {codDisabled
+              {isServiceable === false
+                ? 'Payment options unavailable'
+                : codDisabled
                 ? `Not available above ₹${COD_MAX_TOTAL.toLocaleString('en-IN')}`
                 : 'Pay after verifying materials'}
             </Text>
           </View>
-          <MaterialIcons name="payments" size={28} color={codDisabled ? colors.iconMuted : colors.icon} />
+          <MaterialIcons name="payments" size={28} color={(codDisabled || isServiceable === false) ? colors.iconMuted : colors.icon} />
         </Pressable>
 
         {gstin ? (
@@ -230,8 +283,8 @@ export default function CheckoutScreen() {
           </View>
           <View style={styles.totalRow}>
             <Text style={styles.totalLineLabel}>Delivery</Text>
-            <Text style={deliveryFee === 0 ? styles.free : undefined}>
-              {deliveryFee === 0 ? 'Free' : `₹${deliveryFee}`}
+            <Text style={isServiceable === false ? styles.unserviceablePrice : (deliveryFee === 0 ? styles.free : undefined)}>
+              {isServiceable === false ? 'Unavailable' : (deliveryFee === 0 ? 'Free' : `₹${deliveryFee}`)}
             </Text>
           </View>
           <View style={styles.totalRow}>
@@ -240,18 +293,20 @@ export default function CheckoutScreen() {
           </View>
           <Text style={styles.totalLabel}>Total Amount</Text>
           <Text style={styles.totalValue}>
-            ₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            {isServiceable === false ? 'Unavailable' : `₹${total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
           </Text>
         </View>
 
         <PrimaryButton
-          label="Place Order"
+          label={isServiceable === false ? 'Area Not Serviceable' : 'Place Order'}
           onPress={handlePlaceOrder}
           loading={placeOrder.isPending}
-          disabled={!selectedAddress}
+          disabled={!selectedAddress || isServiceable === false}
         />
         {!selectedAddress ? (
           <Text style={styles.addressHint}>Please select a delivery address to continue</Text>
+        ) : isServiceable === false ? (
+          <Text style={styles.addressHint}>Cannot place order to an unserviceable pincode</Text>
         ) : null}
         {placeOrder.isError ? (
           <Text style={styles.error}>
@@ -259,6 +314,7 @@ export default function CheckoutScreen() {
           </Text>
         ) : null}
       </ScrollView>
+      <DeliverySelectorModal visible={selectorVisible} onClose={() => setSelectorVisible(false)} />
     </View>
   );
 }
@@ -319,4 +375,23 @@ const styles = StyleSheet.create({
   totalValue: { ...typography.priceDisplay, fontSize: 24, color: colors.primary },
   addressHint: { ...typography.bodyMd, color: colors.onSurfaceVariant, textAlign: 'center', marginTop: spacing.unit1 },
   error: { color: colors.error, ...typography.bodyMd, textAlign: 'center', marginTop: spacing.unit2 },
+  unserviceableWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.unit2,
+    backgroundColor: colors.error,
+    padding: spacing.unit3,
+    borderRadius: 8,
+    marginTop: spacing.unit2,
+  },
+  unserviceableText: {
+    ...typography.bodyMd,
+    color: colors.onError,
+    flex: 1,
+    fontWeight: '600',
+  },
+  unserviceablePrice: {
+    color: colors.error,
+    fontWeight: '700',
+  },
 });

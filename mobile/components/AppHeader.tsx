@@ -1,8 +1,10 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DeliverySelectorModal } from './DeliverySelectorModal';
 import { colors, spacing, typography } from '@/lib/theme';
 import { useCartStore } from '@/stores/cart';
 import { useLocationStore } from '@/stores/location';
@@ -26,6 +28,7 @@ export function AppHeader({
   showBack = false,
   variant = 'default',
 }: AppHeaderProps) {
+  const [selectorVisible, setSelectorVisible] = useState(false);
   const insets = useSafeAreaInsets();
   const itemCount = useCartStore((s) => s.itemCount());
   const shortLabel = useLocationStore((s) => s.shortLabel);
@@ -63,7 +66,7 @@ export function AppHeader({
         {showLocation ? (
           <Pressable
             style={styles.location}
-            onPress={() => router.push('/address/select')}
+            onPress={() => setSelectorVisible(true)}
             onLongPress={() => void resolveFromDevice(true)}
             accessibilityRole="button"
             accessibilityLabel="Choose delivery address">
@@ -109,6 +112,7 @@ export function AppHeader({
           {subtitle}
         </Text>
       ) : null}
+      <DeliverySelectorModal visible={selectorVisible} onClose={() => setSelectorVisible(false)} />
     </View>
   );
 }
