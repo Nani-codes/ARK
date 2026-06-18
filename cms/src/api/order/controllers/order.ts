@@ -51,7 +51,9 @@ export default factories.createCoreController('api::order.order', ({ strapi }) =
     }
 
     await this.validateInput(data, ctx);
-    const sanitizedInputData = await this.sanitizeInput(data, ctx);
+    const sanitizedInputData = (await this.sanitizeInput(data, ctx)) as Record<string, unknown>;
+    sanitizedInputData.user = user.id;
+
     const entity = await strapi.service('api::order.order').create({
       ...sanitizedQuery,
       data: sanitizedInputData,

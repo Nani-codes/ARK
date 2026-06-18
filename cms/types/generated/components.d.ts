@@ -25,6 +25,33 @@ export interface OrderOrderItem extends Struct.ComponentSchema {
   };
 }
 
+export interface ProductPricingTier extends Struct.ComponentSchema {
+  collectionName: 'components_product_pricing_tiers';
+  info: {
+    description: 'Unit price when customer buys at least minQty items';
+    displayName: 'Quantity price tier';
+    icon: 'layer';
+  };
+  attributes: {
+    minQty: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 2;
+        },
+        number
+      >;
+    unitPrice: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+  };
+}
+
 export interface ProductProductSpec extends Struct.ComponentSchema {
   collectionName: 'components_product_product_specs';
   info: {
@@ -65,6 +92,7 @@ export interface ProductProductVariant extends Struct.ComponentSchema {
         },
         number
       >;
+    pricingTiers: Schema.Attribute.Component<'product.pricing-tier', true>;
   };
 }
 
@@ -98,6 +126,7 @@ declare module '@strapi/strapi' {
   export module Public {
     export interface ComponentSchemas {
       'order.order-item': OrderOrderItem;
+      'product.pricing-tier': ProductPricingTier;
       'product.product-spec': ProductProductSpec;
       'product.product-variant': ProductProductVariant;
       'product.variant-choice': ProductVariantChoice;

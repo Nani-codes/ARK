@@ -1,4 +1,3 @@
-import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
@@ -13,15 +12,49 @@ type NotificationListener = (notification: AppNotification) => void;
 
 const listeners = new Set<NotificationListener>();
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+type ExpoNotificationsModule = typeof import('expo-notifications');
+
+let notificationsModule: ExpoNotificationsModule | null | undefined;
+let handlerConfigured = false;
+
+/** Remote push is unavailable in Expo Go (SDK 53+). Use a dev/production build for in-app push. */
+export function isExpoPushSupported(): boolean {
+  if (Platform.OS === 'web') return false;
+  if (Constants.appOwnership === 'expo') return false;
+  return true;
+}
+
+async function loadNotifications(): Promise<ExpoNotificationsModule | null> {
+  if (notificationsModule !== undefined) return notificationsModule;
+  if (!isExpoPushSupported()) {
+    notificationsModule = null;
+    return null;
+  }
+
+  try {
+    const mod = await import('expo-notifications');
+    if (!handlerConfigured) {
+      mod.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+          shouldShowBanner: true,
+          shouldShowList: true,
+        }),
+      });
+      handlerConfigured = true;
+    }
+    notificationsModule = mod;
+    return mod;
+  } catch (error) {
+    if (__DEV__) {
+      console.warn('[notifications] expo-notifications unavailable:', error);
+    }
+    notificationsModule = null;
+    return null;
+  }
+}
 
 function emit(notification: AppNotification) {
   listeners.forEach((listener) => {
@@ -44,6 +77,9 @@ export async function simulateNotification(notification: AppNotification) {
   emit(notification);
   if (Platform.OS === 'web') return;
 
+  const Notifications = await loadNotifications();
+  if (!Notifications) return;
+
   await Notifications.scheduleNotificationAsync({
     content: {
       title: notification.title,
@@ -55,7 +91,8 @@ export async function simulateNotification(notification: AppNotification) {
 }
 
 export async function registerForPushNotifications(): Promise<string | null> {
-  if (Platform.OS === 'web') return null;
+  const Notifications = await loadNotifications();
+  if (!Notifications) return null;
 
   const { status: existing } = await Notifications.getPermissionsAsync();
   let finalStatus = existing;
@@ -86,9 +123,12 @@ export async function registerForPushNotifications(): Promise<string | null> {
   return token.data;
 }
 
-export function attachNotificationListeners(
+export async function attachNotificationListeners(
   onResponse?: (data: Record<string, unknown>) => void
-) {
+): Promise<() => void> {
+  const Notifications = await loadNotifications();
+  if (!Notifications) return () => {};
+
   const receivedSub = Notifications.addNotificationReceivedListener((event) => {
     const content = event.request.content;
     emit({

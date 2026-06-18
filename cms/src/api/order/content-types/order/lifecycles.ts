@@ -1,75 +1,149 @@
-import { sendExpoPush } from '../../../../utils/expo-push';
+import type { NotificationEvent } from '../../../../config/notification-templates';
+import { formatEtaIst, formatInr, notifyUser } from '../../../../utils/notify-user';
 import { normalizeOrderStatusField } from '../../utils/normalize-order-data';
 
-async function sendSms(phone: string, message: string) {
-  const authKey = process.env.MSG91_AUTH_KEY;
-  const templateId = process.env.MSG91_TEMPLATE_ID;
+type OrderRecord = {
+  id?: number;
+  orderNumber?: string;
+  orderStatus?: string;
+  estimatedDeliveryAt?: string;
+  documentId?: string;
+  total?: number | string;
+  user?: { id?: number; username?: string; phone?: string } | number;
+};
 
-  if (!authKey) {
-    strapi.log.info(`[SMS stub] +91${phone}: ${message}`);
-    return;
+function resolveUserId(order: OrderRecord): number | undefined {
+  if (typeof order.user === 'number') return order.user;
+  return order.user?.id;
+}
+
+function phoneFromUsername(username?: string): string | undefined {
+  if (username?.startsWith('user_')) {
+    return username.replace('user_', '');
+  }
+  return undefined;
+}
+
+/** afterCreate result often omits relations — resolve user + phone for notifications. */
+async function resolveOrderNotifyTarget(
+  order: OrderRecord
+): Promise<{ userId?: number; phone?: string }> {
+  let userId = resolveUserId(order);
+  let phone =
+    typeof order.user === 'object' ? order.user?.phone : undefined;
+
+  if (!userId || !phone) {
+    const where = order.documentId
+      ? { documentId: order.documentId }
+      : order.id
+        ? { id: order.id }
+        : null;
+
+    if (where) {
+      const row = await strapi.db.query('api::order.order').findOne({
+        where,
+        populate: ['user'],
+      });
+      if (row) {
+        userId = userId ?? resolveUserId(row as OrderRecord);
+        const rowUser = (row as OrderRecord).user;
+        if (typeof rowUser === 'object') {
+          phone =
+            phone ??
+            rowUser?.phone ??
+            phoneFromUsername(rowUser?.username);
+        }
+      }
+    }
   }
 
-  try {
-    const res = await fetch('https://control.msg91.com/api/v5/flow/', {
-      method: 'POST',
-      headers: {
-        authkey: authKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        template_id: templateId,
-        recipients: [{ mobiles: `91${phone}`, message }],
-      }),
-    });
-    if (!res.ok) {
-      strapi.log.warn(`MSG91 failed: ${await res.text()}`);
-    }
-  } catch (e) {
-    strapi.log.error('MSG91 error', e);
+  const ctx = strapi.requestContext.get();
+  if (!userId && ctx?.state?.user?.id) {
+    userId = ctx.state.user.id;
+  }
+  if (!phone) {
+    phone =
+      phoneFromUsername(ctx?.state?.user?.username) ??
+      (ctx?.state?.user?.phone ? String(ctx.state.user.phone) : undefined);
+  }
+
+  return { userId, phone };
+}
+
+function orderStatusEvent(status?: string): NotificationEvent | null {
+  switch (status) {
+    case 'confirmed':
+      return 'order_confirmed';
+    case 'out_for_delivery':
+      return 'order_out_for_delivery';
+    case 'delivered':
+      return 'order_delivered';
+    case 'cancelled':
+      return 'order_cancelled';
+    default:
+      return null;
   }
 }
 
-/** Notify customer on order status change (SMS + Expo push). */
-async function notifyOrderStatusChange(
-  order: {
-    orderNumber?: string;
-    orderStatus?: string;
-    estimatedDeliveryAt?: string;
-    documentId?: string;
-  },
-  userId?: number
-) {
+async function notifyOrderPlaced(order: OrderRecord) {
+  if (!order.orderNumber) return;
+
+  const { userId, phone } = await resolveOrderNotifyTarget(order);
+  const eta = formatEtaIst(order.estimatedDeliveryAt);
+
+  await notifyUser(strapi, {
+    userId,
+    phone,
+    event: 'order_placed',
+    variables: {
+      '1': order.orderNumber,
+      '2': formatInr(order.total),
+      '3': eta || 'soon',
+    },
+    push: {
+      title: `Order ${order.orderNumber}`,
+      body: `Order placed successfully${eta ? `. ETA: ${eta}` : ''}`,
+      data: {
+        type: 'order_status',
+        orderNumber: order.orderNumber,
+        orderStatus: order.orderStatus ?? 'pending',
+        orderDocumentId: order.documentId,
+      },
+    },
+  });
+}
+
+async function notifyOrderStatusChange(order: OrderRecord) {
   if (!order.orderNumber || !order.orderStatus) return;
 
-  let phone: string | undefined;
-  let expoPushToken: string | undefined;
+  const event = orderStatusEvent(order.orderStatus);
+  if (!event) return;
 
-  if (userId) {
-    const user = await strapi.db
-      .query('plugin::users-permissions.user')
-      .findOne({ where: { id: userId } });
-    phone = user?.username?.replace('user_', '');
-    expoPushToken = user?.expoPushToken ?? undefined;
-  }
-
-  const eta = order.estimatedDeliveryAt
-    ? new Date(order.estimatedDeliveryAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
-    : '';
+  const { userId, phone } = await resolveOrderNotifyTarget(order);
+  const eta = formatEtaIst(order.estimatedDeliveryAt);
   const statusLabel = order.orderStatus.replace(/_/g, ' ');
-  const message = `ARK: Order ${order.orderNumber} is now ${statusLabel}${eta ? `. ETA: ${eta}` : ''}`;
+  const message = `Order ${order.orderNumber} is now ${statusLabel}${eta ? `. ETA: ${eta}` : ''}`;
 
-  if (phone) {
-    await sendSms(phone, message);
-  } else {
-    strapi.log.info(`[SMS] ${message}`);
+  const variables: Record<string, string> = { '1': order.orderNumber };
+  if (event === 'order_confirmed' || event === 'order_out_for_delivery') {
+    variables['2'] = eta || 'soon';
   }
 
-  await sendExpoPush(strapi, expoPushToken, `Order ${order.orderNumber}`, message, {
-    type: 'order_status',
-    orderNumber: order.orderNumber,
-    orderStatus: order.orderStatus,
-    orderDocumentId: order.documentId,
+  await notifyUser(strapi, {
+    userId,
+    phone,
+    event,
+    variables,
+    push: {
+      title: `Order ${order.orderNumber}`,
+      body: message,
+      data: {
+        type: 'order_status',
+        orderNumber: order.orderNumber,
+        orderStatus: order.orderStatus,
+        orderDocumentId: order.documentId,
+      },
+    },
   });
 }
 
@@ -93,11 +167,17 @@ export default {
     normalizeOrderStatusField(event.params.data);
   },
 
+  async afterCreate(event) {
+    const { result } = event;
+    if (result) {
+      await notifyOrderPlaced(result as OrderRecord);
+    }
+  },
+
   async afterUpdate(event) {
     const { result, params } = event;
     if (params?.data?.orderStatus && result?.orderStatus) {
-      const userId = result.user?.id ?? result.user;
-      await notifyOrderStatusChange(result, userId);
+      await notifyOrderStatusChange(result as OrderRecord);
     }
   },
 };

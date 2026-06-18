@@ -1,8 +1,16 @@
 import { create } from 'zustand';
 
 import { fetchMyProfile } from '@/lib/api';
-import { deleteSecureItem, getSecureItem, setSecureItem } from '@/lib/secureStorage';
-import { setAuthToken, verifyOtp } from '@/lib/strapi';
+import { mapStrapiAuthUser } from '@/lib/auth-mapper';
+import {
+  isAppLocked,
+  savePassword,
+  SessionExpiredError,
+  setAppLocked,
+  verifyPassword,
+} from '@/lib/credentials';
+import { getSecureItem, setSecureItem } from '@/lib/secureStorage';
+import { loginWithStrapiLocal, setAuthToken, verifyOtp } from '@/lib/strapi';
 import type { AuthUser } from '@/lib/types';
 
 const TOKEN_KEY = 'ark_jwt';
@@ -15,6 +23,7 @@ type AuthState = {
   isHydrated: boolean;
   hydrate: () => Promise<void>;
   login: (phone: string, otp: string) => Promise<AuthUser>;
+  loginWithPassword: (phone: string, password: string) => Promise<AuthUser>;
   refreshUser: () => Promise<AuthUser | null>;
   setUser: (user: AuthUser) => Promise<void>;
   logout: () => Promise<void>;
@@ -25,6 +34,17 @@ async function persistUser(user: AuthUser) {
   await setSecureItem(USER_KEY, JSON.stringify(user));
 }
 
+async function establishSession(jwt: string, user: AuthUser) {
+  await setSecureItem(TOKEN_KEY, jwt);
+  await persistUser(user);
+  setAuthToken(jwt);
+  await setAppLocked(false);
+}
+
+function samePhoneUser(user: AuthUser, phone: string): boolean {
+  return user.phone === phone || user.username === `user_${phone}`;
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
   user: null,
@@ -33,6 +53,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   hydrate: async () => {
     try {
+      const locked = await isAppLocked();
+      if (locked) {
+        setAuthToken(null);
+        set({ token: null, user: null, isHydrated: true });
+        return;
+      }
+
       const token = await getSecureItem(TOKEN_KEY);
       const userRaw = await getSecureItem(USER_KEY);
       const user = userRaw ? (JSON.parse(userRaw) as AuthUser) : null;
@@ -47,11 +74,48 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       const { jwt, user } = await verifyOtp(phone, otp);
-      await setSecureItem(TOKEN_KEY, jwt);
-      await persistUser(user);
-      setAuthToken(jwt);
+      await establishSession(jwt, user);
       set({ token: jwt, user, isLoading: false });
       return user;
+    } catch (e) {
+      set({ isLoading: false });
+      throw e;
+    }
+  },
+
+  loginWithPassword: async (phone, password) => {
+    set({ isLoading: true });
+    try {
+      const localOk = await verifyPassword(phone, password);
+
+      if (localOk) {
+        const token = await getSecureItem(TOKEN_KEY);
+        const userRaw = await getSecureItem(USER_KEY);
+        if (!token || !userRaw) {
+          throw new SessionExpiredError(phone);
+        }
+
+        const storedUser = JSON.parse(userRaw) as AuthUser;
+        if (!samePhoneUser(storedUser, phone)) {
+          throw new Error('Incorrect phone number or password');
+        }
+
+        await establishSession(token, storedUser);
+        set({ token, user: storedUser, isLoading: false });
+        void get().refreshUser();
+        return storedUser;
+      }
+
+      try {
+        const { jwt, user: rawUser } = await loginWithStrapiLocal(phone, password);
+        const user = mapStrapiAuthUser(rawUser, phone);
+        await savePassword(phone, password);
+        await establishSession(jwt, user);
+        set({ token: jwt, user, isLoading: false });
+        return user;
+      } catch {
+        throw new Error('Incorrect phone number or password');
+      }
     } catch (e) {
       set({ isLoading: false });
       throw e;
@@ -76,9 +140,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user });
   },
 
+  /** Locks the app but keeps the session on device so password sign-in works without OTP. */
   logout: async () => {
-    await deleteSecureItem(TOKEN_KEY);
-    await deleteSecureItem(USER_KEY);
+    await setAppLocked(true);
     setAuthToken(null);
     set({ token: null, user: null });
   },

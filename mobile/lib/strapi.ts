@@ -27,6 +27,16 @@ type FetchOptions = {
   auth?: boolean;
 };
 
+export class StrapiRequestError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'StrapiRequestError';
+    this.status = status;
+  }
+}
+
 export async function strapiFetch<T>(path: string, options: FetchOptions = {}): Promise<T> {
   const { method = 'GET', body, auth = false } = options;
   const headers: Record<string, string> = {
@@ -47,7 +57,7 @@ export async function strapiFetch<T>(path: string, options: FetchOptions = {}): 
 
   if (!res.ok) {
     const message = json?.error?.message ?? json?.message ?? `Request failed (${res.status})`;
-    throw new Error(message);
+    throw new StrapiRequestError(message, res.status);
   }
 
   return json as T;
@@ -64,5 +74,16 @@ export async function verifyOtp(phone: string, otp: string) {
   return strapiFetch<{ jwt: string; user: import('./types').AuthUser }>('/api/phone-auth/verify', {
     method: 'POST',
     body: { phone, otp },
+  });
+}
+
+/** Strapi users-permissions local login (identifier = user_{phone}). */
+export async function loginWithStrapiLocal(phone: string, password: string) {
+  return strapiFetch<{ jwt: string; user: Record<string, unknown> }>('/api/auth/local', {
+    method: 'POST',
+    body: {
+      identifier: `user_${phone}`,
+      password,
+    },
   });
 }

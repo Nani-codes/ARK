@@ -1,32 +1,10 @@
 import crypto from 'crypto';
 
+import { isTwilioConfigured } from '../../../config/notification-templates';
 import { mapAuthUser } from '../../../lib/mapAuthUser';
+import { notifyUser } from '../../../utils/notify-user';
 
 const OTP_STORE = new Map<string, { otp: string; expiresAt: number }>();
-
-async function sendOtpSms(phone: string, otp: string) {
-  const authKey = process.env.MSG91_AUTH_KEY;
-
-  if (!authKey) {
-    strapi.log.info(`[mock-otp] OTP for +91 ${phone}: ${otp} (or any 6 digits in dev)`);
-    return;
-  }
-
-  try {
-    const res = await fetch(
-      `https://control.msg91.com/api/v5/otp?mobile=91${phone}&otp=${otp}`,
-      {
-        method: 'POST',
-        headers: { authkey: authKey },
-      }
-    );
-    if (!res.ok) {
-      strapi.log.warn(`MSG91 OTP failed: ${await res.text()}`);
-    }
-  } catch (e) {
-    strapi.log.error('MSG91 OTP error', e);
-  }
-}
 
 export default {
   async sendOtp(ctx) {
@@ -36,7 +14,8 @@ export default {
       return ctx.badRequest('Valid 10-digit phone number is required');
     }
 
-    const otp = process.env.MSG91_AUTH_KEY
+    const useRealOtp = isTwilioConfigured();
+    const otp = useRealOtp
       ? String(Math.floor(100000 + Math.random() * 900000))
       : '000000';
 
@@ -45,9 +24,30 @@ export default {
       expiresAt: Date.now() + 10 * 60 * 1000,
     });
 
-    await sendOtpSms(String(phone), otp);
+    const { whatsapp } = await notifyUser(strapi, {
+      phone: String(phone),
+      event: 'otp',
+      variables: { '1': otp },
+    });
 
-    ctx.send({ ok: true, message: 'OTP sent successfully' });
+    const delivered = whatsapp?.ok && !whatsapp?.deliveryFailed;
+
+    if (!delivered) {
+      strapi.log.warn(
+        `[otp-fallback] OTP for +91 ${phone}: ${otp}. WhatsApp not delivered${whatsapp?.error ? ` — ${whatsapp.error}` : ''}`
+      );
+    }
+
+    ctx.send({
+      ok: true,
+      message: delivered
+        ? 'OTP sent to your WhatsApp'
+        : 'OTP generated but WhatsApp delivery failed. Join Twilio sandbox or check server logs.',
+      whatsappDelivered: delivered,
+      deliveryHint: delivered
+        ? undefined
+        : 'Open WhatsApp and send join <your-sandbox-code> to +1 415 523 8886 (see Twilio Console → Messaging → Try WhatsApp)',
+    });
   },
 
   async verify(ctx) {
@@ -62,7 +62,7 @@ export default {
     }
 
     const stored = OTP_STORE.get(String(phone));
-    const useRealOtp = !!process.env.MSG91_AUTH_KEY;
+    const useRealOtp = isTwilioConfigured();
 
     if (useRealOtp) {
       if (!stored || stored.expiresAt < Date.now() || stored.otp !== String(otp)) {
@@ -104,6 +104,11 @@ export default {
         isProfessional: false,
         listedAsProfessional: false,
         onboardingComplete: false,
+      });
+    } else if (!user.phone) {
+      user = await strapi.db.query('plugin::users-permissions.user').update({
+        where: { id: user.id },
+        data: { phone: String(phone) },
       });
     }
 

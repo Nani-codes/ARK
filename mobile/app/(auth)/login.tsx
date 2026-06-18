@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -13,27 +14,55 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Logo } from '@/components/Logo';
 import { ScreenBackground } from '@/components/ScreenBackground';
-import { sendOtp } from '@/lib/strapi';
+import { getLastPhone, SessionExpiredError } from '@/lib/credentials';
 import { colors, spacing, typography } from '@/lib/theme';
+import { useAuthStore } from '@/stores/auth';
+import type { AuthUser } from '@/lib/types';
+
+function routeAfterLogin(user: AuthUser) {
+  if (user.onboardingComplete === false) {
+    router.replace('/(auth)/professional-setup');
+  } else {
+    router.replace('/(tabs)');
+  }
+}
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
+  const loginWithPassword = useAuthStore((s) => s.loginWithPassword);
   const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleGetOtp = async () => {
+  useEffect(() => {
+    void getLastPhone().then((last) => {
+      if (last) setPhone(last);
+    });
+  }, []);
+
+  const handleSignIn = async () => {
     if (phone.length !== 10) {
       setError('Enter a valid 10-digit mobile number');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Enter your password (min 6 characters)');
       return;
     }
     setError('');
     setLoading(true);
     try {
-      await sendOtp(phone);
-      router.push({ pathname: '/(auth)/verify', params: { phone } });
+      const user = await loginWithPassword(phone, password);
+      routeAfterLogin(user);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to send OTP');
+      if (e instanceof SessionExpiredError) {
+        setError(
+          'No saved session on this device. Use Create account if you are new, or Forgot password to sign in with OTP once.'
+        );
+        return;
+      }
+      setError(e instanceof Error ? e.message : 'Sign in failed');
     } finally {
       setLoading(false);
     }
@@ -41,53 +70,73 @@ export default function LoginScreen() {
 
   return (
     <ScreenBackground variant="hero">
-    <KeyboardAvoidingView
-      style={[styles.container, { paddingTop: insets.top + spacing.unit8 }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.brand}>
-        <Logo size="hero" style={styles.logoWrap} />
-        <Text style={styles.tagline}>Industrial Procurement Simplified</Text>
-      </View>
-
-      <View style={styles.form}>
-        <Text style={styles.heading}>Welcome to ARK</Text>
-        <Text style={styles.sub}>Sign in to order materials in minutes</Text>
-
-        <Text style={styles.label}>Phone Number</Text>
-        <View style={styles.phoneRow}>
-          <View style={styles.prefix}>
-            <Text style={styles.prefixText}>+91</Text>
-          </View>
-          <TextInput
-            style={[styles.input, error ? styles.inputError : null]}
-            placeholder="Enter your mobile number"
-            keyboardType="number-pad"
-            maxLength={10}
-            value={phone}
-            onChangeText={(t) => setPhone(t.replace(/\D/g, ''))}
-          />
+      <KeyboardAvoidingView
+        style={[styles.container, { paddingTop: insets.top + spacing.unit8 }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={styles.brand}>
+          <Logo size="hero" style={styles.logoWrap} />
+          <Text style={styles.tagline}>Industrial Procurement Simplified</Text>
         </View>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <PrimaryButton label="Get OTP" onPress={handleGetOtp} loading={loading} style={styles.btn} />
+        <View style={styles.form}>
+          <Text style={styles.heading}>Welcome back</Text>
+          <Text style={styles.sub}>Sign in with your phone and password</Text>
 
-        <Text style={styles.hint}>MVP: any 6-digit OTP will work</Text>
-      </View>
-    </KeyboardAvoidingView>
+          <Text style={styles.label}>Phone Number</Text>
+          <View style={styles.phoneRow}>
+            <View style={styles.prefix}>
+              <Text style={styles.prefixText}>+91</Text>
+            </View>
+            <TextInput
+              style={[styles.phoneInput, error ? styles.inputError : null]}
+              placeholder="Enter your mobile number"
+              keyboardType="number-pad"
+              maxLength={10}
+              value={phone}
+              onChangeText={(t) => setPhone(t.replace(/\D/g, ''))}
+            />
+          </View>
+
+          <Text style={styles.label}>Password</Text>
+          <TextInput
+            style={[styles.fieldInput, error ? styles.inputError : null]}
+            placeholder="Enter your password"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={password}
+            onChangeText={setPassword}
+          />
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <PrimaryButton label="Sign In" onPress={handleSignIn} loading={loading} style={styles.btn} />
+
+          <Pressable onPress={() => router.push('/(auth)/forgot-password' as never)} style={styles.linkWrap}>
+            <Text style={styles.link}>Forgot password?</Text>
+          </Pressable>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>New to ARK? </Text>
+            <Pressable onPress={() => router.push('/(auth)/signup' as never)}>
+              <Text style={styles.link}>Create account</Text>
+            </Pressable>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
     </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: spacing.containerMargin },
-  brand: { alignItems: 'center', marginBottom: spacing.unit12 },
+  brand: { alignItems: 'center', marginBottom: spacing.unit8 },
   logoWrap: { marginBottom: spacing.unit4 },
   tagline: { ...typography.labelLg, color: colors.onSurfaceVariant },
   form: { flex: 1 },
   heading: { ...typography.headlineLgMobile, color: colors.primary, marginBottom: spacing.unit1 },
-  sub: { ...typography.bodyMd, color: colors.onSurfaceVariant, marginBottom: spacing.unit8 },
+  sub: { ...typography.bodyMd, color: colors.onSurfaceVariant, marginBottom: spacing.unit6 },
   label: { ...typography.labelLg, color: colors.onSurfaceVariant, marginBottom: spacing.unit2 },
-  phoneRow: { flexDirection: 'row', gap: spacing.unit2, marginBottom: spacing.unit2 },
+  phoneRow: { flexDirection: 'row', gap: spacing.unit2, marginBottom: spacing.unit4 },
   prefix: {
     height: 56,
     width: 72,
@@ -99,7 +148,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainerLow,
   },
   prefixText: { ...typography.bodyLg, color: colors.onSurface },
-  input: {
+  phoneInput: {
     flex: 1,
     height: 56,
     borderWidth: 1,
@@ -110,8 +159,26 @@ const styles = StyleSheet.create({
     ...typography.bodyLg,
     color: colors.onSurface,
   },
+  fieldInput: {
+    height: 56,
+    borderWidth: 1,
+    borderColor: colors.outline,
+    borderRadius: 8,
+    paddingHorizontal: spacing.unit4,
+    backgroundColor: colors.surfaceContainerLow,
+    ...typography.bodyLg,
+    color: colors.onSurface,
+    marginBottom: spacing.unit2,
+  },
   inputError: { borderColor: colors.error },
   error: { color: colors.error, ...typography.bodyMd, marginBottom: spacing.unit2 },
-  btn: { marginTop: spacing.unit4 },
-  hint: { ...typography.labelMd, color: colors.onSurfaceVariant, textAlign: 'center', marginTop: spacing.unit6 },
+  btn: { marginTop: spacing.unit2 },
+  linkWrap: { alignItems: 'center', marginTop: spacing.unit4 },
+  link: { ...typography.labelLg, color: colors.primary },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: spacing.unit8,
+  },
+  footerText: { ...typography.bodyMd, color: colors.onSurfaceVariant },
 });

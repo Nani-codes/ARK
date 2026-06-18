@@ -1,12 +1,34 @@
-# Push notifications & callbacks
+# Notifications
 
-## Overview
+ARK delivers transactional updates through **Twilio WhatsApp** (primary) and **Expo push** (in-app).
 
-ARK uses `expo-notifications` for device push and an in-app pub/sub for UI updates.
+## Channels
 
-## Registering (automatic)
+| Channel | Where | Events |
+|---------|-------|--------|
+| WhatsApp | Server-side via Twilio templates | OTP, order placed/status, quotes, returns |
+| Expo push | [`mobile/hooks/useNotifications.ts`](../hooks/useNotifications.ts) | Order status (when device token registered) |
 
-`useNotificationSetup()` in `app/_layout.tsx` runs on app start:
+## WhatsApp (server)
+
+Configured in `cms/.env` — see [`cms/.env.example`](../../cms/.env.example) and [`cms/docs/WHATSAPP-TEMPLATES.md`](../../cms/docs/WHATSAPP-TEMPLATES.md).
+
+Template bodies and ContentSid registry: `cms/src/config/twilio-template-sids.json`
+
+Events are sent from Strapi lifecycles:
+
+- **OTP** — `phone-auth/send-otp`
+- **Orders** — `order` afterCreate (placed) + afterUpdate (confirmed, out for delivery, delivered, cancelled)
+- **Quotes** — `quote-request` afterCreate + afterUpdate
+- **Returns** — `return-request` afterCreate + afterUpdate
+
+Without Twilio credentials, CMS logs `[mock-whatsapp]` and OTP accepts any 6 digits in dev.
+
+## In-app push (development builds only)
+
+Expo Go does **not** support remote push (SDK 53+). In-app push requires an EAS dev or production build.
+
+`useNotificationSetup()` in `app/_layout.tsx` runs on app start when supported:
 
 1. Requests notification permission
 2. Gets Expo push token
@@ -27,7 +49,7 @@ function OrdersScreen() {
 }
 ```
 
-## Simulating in dev
+## Simulating in dev (in-app only)
 
 ```tsx
 import { simulateNotification } from '@/lib/notifications';
@@ -40,12 +62,13 @@ await simulateNotification({
 });
 ```
 
-## CMS delivery
+## Kill switches
 
-On order status change, Strapi sends Expo push when the user has `expoPushToken` set.
+In `cms/.env`:
 
-Set `PUSH_NOTIFICATIONS_DISABLED=true` in `cms/.env` to log-only mode.
+- `NOTIFICATIONS_DISABLED=true` — skip all WhatsApp sends (log only)
+- `PUSH_NOTIFICATIONS_DISABLED=true` — skip Expo push API calls
 
 ## Deep links
 
-Tapping a notification with `orderDocumentId` in data opens `/order/[id]`.
+Tapping an Expo notification with `orderDocumentId` in data opens `/order/[id]`.

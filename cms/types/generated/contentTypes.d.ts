@@ -658,6 +658,13 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       Schema.Attribute.DefaultTo<true>;
     bestSeller: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     brand: Schema.Attribute.String;
+    bulkMinQuantity: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
     bulkPricingEnabled: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<false>;
     category: Schema.Attribute.Relation<'manyToOne', 'api::category.category'>;
@@ -680,6 +687,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     onDeal: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     price: Schema.Attribute.Decimal & Schema.Attribute.Required;
     priceUnitLabel: Schema.Attribute.String;
+    pricingTiers: Schema.Attribute.Component<'product.pricing-tier', true>;
     publishedAt: Schema.Attribute.DateTime;
     replacementDays: Schema.Attribute.Integer &
       Schema.Attribute.SetMinMax<
@@ -692,6 +700,9 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
     specs: Schema.Attribute.Component<'product.product-spec', true>;
     tags: Schema.Attribute.JSON;
+    temperatureNote: Schema.Attribute.String;
+    temperatureSensitive: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
     unit: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'Piece'>;
@@ -724,6 +735,7 @@ export interface ApiQuoteRequestQuoteRequest
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    gstin: Schema.Attribute.String;
     instructions: Schema.Attribute.Text;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -732,10 +744,18 @@ export interface ApiQuoteRequestQuoteRequest
     > &
       Schema.Attribute.Private;
     phone: Schema.Attribute.String & Schema.Attribute.Required;
+    preferredDeliveryDate: Schema.Attribute.Date;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
     productName: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
-    quantityTons: Schema.Attribute.Decimal & Schema.Attribute.Required;
-    quoteStatus: Schema.Attribute.Enumeration<['new', 'contacted', 'closed']> &
+    quantity: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    quantityTons: Schema.Attribute.Decimal;
+    quantityUnit: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'Metric Ton'>;
+    quotedPrice: Schema.Attribute.Decimal;
+    quoteStatus: Schema.Attribute.Enumeration<
+      ['new', 'contacted', 'quoted', 'closed']
+    > &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'new'>;
     siteAddress: Schema.Attribute.Text & Schema.Attribute.Required;
@@ -746,6 +766,7 @@ export interface ApiQuoteRequestQuoteRequest
       'manyToOne',
       'plugin::users-permissions.user'
     >;
+    variantLabel: Schema.Attribute.String;
   };
 }
 
@@ -1296,6 +1317,7 @@ export interface PluginUsersPermissionsUser
       Schema.Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
+    expoPushToken: Schema.Attribute.String;
     isProfessional: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<false>;
     listedAsProfessional: Schema.Attribute.Boolean &

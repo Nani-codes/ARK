@@ -10,7 +10,7 @@ This document tracks open work, priorities, and ownership. Use it with GitHub is
 | Payments | ✅ | Razorpay native + WebView fallback |
 | Bulk quotes | ✅ | Product-linked form, GSTIN, preferred date |
 | Tier pricing | ✅ | Quantity breaks on product/variant |
-| Notifications | ✅ | Expo push + in-app callback hook |
+| Notifications | ✅ | Twilio WhatsApp (OTP, orders, quotes, returns) + Expo push |
 | Delivery ETA | ✅ | Slot-based preview on checkout & PDP |
 | Brand / CTAs | ✅ | Logo component, PrimaryButton variants |
 
@@ -41,6 +41,8 @@ This document tracks open work, priorities, and ownership. Use it with GitHub is
 
 ## Remaining backlog (post–June 2026 ship)
 
+- Production Twilio WhatsApp Business number (move off sandbox)
+- All template ContentSids configured in production `cms/.env`
 - Real FCM/APNs production credentials for EAS builds
 - Admin UI to reply to bulk quotes with `quotedPrice`
 - Per-variant stock counts

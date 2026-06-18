@@ -1,20 +1,52 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenBackground } from '@/components/ScreenBackground';
+import { hasPassword } from '@/lib/credentials';
+import { sendOtp } from '@/lib/strapi';
 import { colors, spacing, typography } from '@/lib/theme';
 import { useAuthStore } from '@/stores/auth';
+import type { AuthUser } from '@/lib/types';
+
+type VerifyMode = 'signup' | 'reset' | 'refresh';
+
+function routeAfterVerify(
+  phone: string,
+  mode: VerifyMode | undefined,
+  user: AuthUser,
+  needsSetPassword: boolean
+) {
+  if (mode === 'reset' || needsSetPassword) {
+    router.replace({
+      pathname: '/(auth)/set-password' as never,
+      params: { phone, mode: mode === 'reset' ? 'reset' : 'create' },
+    });
+    return;
+  }
+
+  if (user.onboardingComplete === false) {
+    router.replace('/(auth)/professional-setup');
+  } else {
+    router.replace('/(tabs)');
+  }
+}
 
 export default function VerifyScreen() {
-  const { phone } = useLocalSearchParams<{ phone: string }>();
+  const { phone, mode } = useLocalSearchParams<{ phone: string; mode?: VerifyMode }>();
   const insets = useSafeAreaInsets();
   const login = useAuthStore((s) => s.login);
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  const subtitle =
+    mode === 'refresh'
+      ? 'Your session expired. Enter the OTP sent to WhatsApp to continue.'
+      : `Check WhatsApp on +91 ${phone} for your 6-digit code`;
 
   const handleVerify = async () => {
     if (!phone || otp.length !== 6) {
@@ -25,11 +57,9 @@ export default function VerifyScreen() {
     setLoading(true);
     try {
       const user = await login(phone, otp);
-      if (user.onboardingComplete === false) {
-        router.replace('/(auth)/professional-setup');
-      } else {
-        router.replace('/(tabs)');
-      }
+      const needsSetPassword =
+        mode === 'signup' || mode === 'reset' || !(await hasPassword(phone));
+      routeAfterVerify(phone, mode, user, needsSetPassword);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Verification failed');
     } finally {
@@ -37,30 +67,48 @@ export default function VerifyScreen() {
     }
   };
 
+  const handleResend = async () => {
+    if (!phone) return;
+    setResending(true);
+    setError('');
+    try {
+      await sendOtp(phone);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to resend OTP');
+    } finally {
+      setResending(false);
+    }
+  };
+
   return (
     <ScreenBackground variant="hero">
-    <View style={[styles.container, { paddingTop: insets.top + spacing.unit8 }]}>
-      <Text style={styles.heading}>Enter OTP</Text>
-      <Text style={styles.sub}>Sent to +91 {phone}</Text>
+      <View style={[styles.container, { paddingTop: insets.top + spacing.unit8 }]}>
+        <Text style={styles.heading}>Enter OTP</Text>
+        <Text style={styles.sub}>{subtitle}</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="6-digit OTP"
-        keyboardType="number-pad"
-        maxLength={6}
-        value={otp}
-        onChangeText={(t) => setOtp(t.replace(/\D/g, ''))}
-      />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+        <TextInput
+          style={styles.input}
+          placeholder="6-digit OTP"
+          keyboardType="number-pad"
+          maxLength={6}
+          value={otp}
+          onChangeText={(t) => setOtp(t.replace(/\D/g, ''))}
+        />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <PrimaryButton label="Verify & Continue" onPress={handleVerify} loading={loading} />
-      <PrimaryButton
-        label="Change Number"
-        variant="outline"
-        onPress={() => router.back()}
-        style={{ marginTop: spacing.unit3 }}
-      />
-    </View>
+        <PrimaryButton label="Verify & Continue" onPress={handleVerify} loading={loading} />
+
+        <Pressable onPress={handleResend} disabled={resending} style={styles.linkWrap}>
+          <Text style={styles.link}>{resending ? 'Sending…' : 'Resend OTP'}</Text>
+        </Pressable>
+
+        <PrimaryButton
+          label="Change Number"
+          variant="outline"
+          onPress={() => router.back()}
+          style={{ marginTop: spacing.unit3 }}
+        />
+      </View>
     </ScreenBackground>
   );
 }
@@ -83,4 +131,6 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
   },
   error: { color: colors.error, marginBottom: spacing.unit4 },
+  linkWrap: { alignItems: 'center', marginTop: spacing.unit4 },
+  link: { ...typography.labelLg, color: colors.primary },
 });

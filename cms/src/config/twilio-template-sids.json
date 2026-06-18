@@ -1,0 +1,72 @@
+{
+  "otp": {
+    "contentSid": "HX229f5a04fd0510ce1b071852155d3e75",
+    "friendlyName": "ark_otp_login",
+    "category": "AUTHENTICATION"
+  },
+  "order_placed": {
+    "contentSid": "HX02885cfd6ed6671ab3de4b3f985a096e",
+    "friendlyName": "ark_order_placed",
+    "category": "UTILITY"
+  },
+  "order_confirmed": {
+    "contentSid": "HX8843db43b20f989771f187a82182d732",
+    "friendlyName": "ark_order_confirmed",
+    "category": "UTILITY"
+  },
+  "order_out_for_delivery": {
+    "contentSid": "HXfdad01dfa6b835acea5fc0b4d6064d0e",
+    "friendlyName": "ark_order_out_for_delivery",
+    "category": "UTILITY"
+  },
+  "order_delivered": {
+    "contentSid": "HXdaecd7d2aa9d0a2b2bc588d414a45e67",
+    "friendlyName": "ark_order_delivered",
+    "category": "UTILITY"
+  },
+  "order_cancelled": {
+    "contentSid": "HXa2a6049a92408c453e1a93298f833c26",
+    "friendlyName": "ark_order_cancelled",
+    "category": "UTILITY"
+  },
+  "quote_received": {
+    "contentSid": "HX5c7cf29c4292901c4ecca121e15d2fc8",
+    "friendlyName": "ark_quote_received",
+    "category": "UTILITY"
+  },
+  "quote_contacted": {
+    "contentSid": "HX172151e765cfaf689033c298873ade48",
+    "friendlyName": "ark_quote_contacted",
+    "category": "UTILITY"
+  },
+  "quote_quoted": {
+    "contentSid": "HXde02db28ea8a613af2229ccf618bb8b4",
+    "friendlyName": "ark_quote_quoted",
+    "category": "UTILITY"
+  },
+  "quote_closed": {
+    "contentSid": "HX5aa41d8ecf085d0d6b23382628cdffe4",
+    "friendlyName": "ark_quote_closed",
+    "category": "UTILITY"
+  },
+  "return_received": {
+    "contentSid": "HX52af03b4d921ef8d4004246fb69025ca",
+    "friendlyName": "ark_return_received",
+    "category": "UTILITY"
+  },
+  "return_approved": {
+    "contentSid": "HX9eeac6ec93d2252ae09e8dcaa60f19f5",
+    "friendlyName": "ark_return_approved",
+    "category": "UTILITY"
+  },
+  "return_rejected": {
+    "contentSid": "HX2f74d8db1c07919796b8460c470ead61",
+    "friendlyName": "ark_return_rejected",
+    "category": "UTILITY"
+  },
+  "return_completed": {
+    "contentSid": "HX1046df261ef99d42a64addf01c218fcd",
+    "friendlyName": "ark_return_completed",
+    "category": "UTILITY"
+  }
+}

@@ -51,7 +51,7 @@ export function useNotificationSetup() {
         }
       }
 
-      detach = attachNotificationListeners((data) => {
+      detach = await attachNotificationListeners((data) => {
         if (data?.type === 'order_status' && data.orderDocumentId) {
           router.push(`/order/${data.orderDocumentId}`);
         }

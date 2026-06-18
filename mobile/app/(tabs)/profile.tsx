@@ -18,6 +18,7 @@ const MENU_ITEMS = [
   { icon: 'location-on' as const, label: 'Saved Addresses', href: '/address/select' },
   { icon: 'business' as const, label: 'Manage GST Details', href: '/profile/gst' },
   { icon: 'payments' as const, label: 'Payment Methods', href: '/profile/payments' },
+  { icon: 'lock-outline' as const, label: 'Change Password', href: '/(auth)/forgot-password' },
   { icon: 'help-outline' as const, label: 'Help & Support', href: '/profile/support' },
   { icon: 'groups' as const, label: 'Find Professionals', href: '/professionals' },
   { icon: 'engineering' as const, label: 'Professional Profile', href: '/profile/professional' },
