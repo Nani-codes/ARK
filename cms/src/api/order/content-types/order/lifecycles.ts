@@ -1,3 +1,4 @@
+import { sendExpoPush } from '../../../../utils/expo-push';
 import { normalizeOrderStatusField } from '../../utils/normalize-order-data';
 
 async function sendSms(phone: string, message: string) {
@@ -29,29 +30,34 @@ async function sendSms(phone: string, message: string) {
   }
 }
 
-/** Notify customer on order status change (SMS + push token log). */
+/** Notify customer on order status change (SMS + Expo push). */
 async function notifyOrderStatusChange(
   order: {
     orderNumber?: string;
     orderStatus?: string;
     estimatedDeliveryAt?: string;
+    documentId?: string;
   },
   userId?: number
 ) {
   if (!order.orderNumber || !order.orderStatus) return;
 
   let phone: string | undefined;
+  let expoPushToken: string | undefined;
+
   if (userId) {
     const user = await strapi.db
       .query('plugin::users-permissions.user')
       .findOne({ where: { id: userId } });
     phone = user?.username?.replace('user_', '');
+    expoPushToken = user?.expoPushToken ?? undefined;
   }
 
   const eta = order.estimatedDeliveryAt
     ? new Date(order.estimatedDeliveryAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
     : '';
-  const message = `ARK: Order ${order.orderNumber} is now ${order.orderStatus.replace(/_/g, ' ')}${eta ? `. ETA: ${eta}` : ''}`;
+  const statusLabel = order.orderStatus.replace(/_/g, ' ');
+  const message = `ARK: Order ${order.orderNumber} is now ${statusLabel}${eta ? `. ETA: ${eta}` : ''}`;
 
   if (phone) {
     await sendSms(phone, message);
@@ -59,7 +65,12 @@ async function notifyOrderStatusChange(
     strapi.log.info(`[SMS] ${message}`);
   }
 
-  strapi.log.info(`[push-stub] Would notify user ${userId} about ${order.orderNumber}`);
+  await sendExpoPush(strapi, expoPushToken, `Order ${order.orderNumber}`, message, {
+    type: 'order_status',
+    orderNumber: order.orderNumber,
+    orderStatus: order.orderStatus,
+    orderDocumentId: order.documentId,
+  });
 }
 
 export default {

@@ -3,8 +3,13 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { calcDeliveryFee, calcSubtotal, calcTaxes, calcTotal } from '@/lib/pricing';
-import { getProductVariants, resolveProductImageUrl } from '@/lib/productPricing';
-import type { OrderItem, Product, ProductVariant } from '@/lib/types';
+import {
+  getEffectivePricingTiers,
+  getProductVariants,
+  resolveProductImageUrl,
+  resolveUnitPrice,
+} from '@/lib/productPricing';
+import type { OrderItem, PricingTier, Product, ProductVariant } from '@/lib/types';
 
 export type CartLine = {
   lineId: string;
@@ -14,8 +19,12 @@ export type CartLine = {
   name: string;
   unit: string;
   unitPrice: number;
+  baseUnitPrice: number;
+  pricingTiers?: PricingTier[];
   quantity: number;
   imageUrl?: string;
+  temperatureSensitive?: boolean;
+  temperatureNote?: string;
 };
 
 export function cartLineId(productDocumentId: string, variantId?: string) {
@@ -30,6 +39,9 @@ export function buildCartLine(
   const lineId = cartLineId(product.documentId, variant.id);
   const displayName =
     variant.id === 'default' ? product.name : `${product.name} (${variant.label})`;
+  const tiers = getEffectivePricingTiers(product, variant);
+  const baseUnitPrice = Number(variant.price);
+  const unitPrice = resolveUnitPrice(baseUnitPrice, quantity, tiers);
 
   return {
     lineId,
@@ -38,9 +50,13 @@ export function buildCartLine(
     variantLabel: variant.id !== 'default' ? variant.label : undefined,
     name: displayName,
     unit: product.unit,
-    unitPrice: Number(variant.price),
+    baseUnitPrice,
+    pricingTiers: tiers,
+    unitPrice,
     quantity,
     imageUrl: resolveProductImageUrl(product, variant),
+    temperatureSensitive: product.temperatureSensitive,
+    temperatureNote: product.temperatureNote,
   };
 }
 
@@ -72,31 +88,24 @@ export const useCartStore = create<CartState>()(
         const quantity = options.quantity ?? 1;
         const variants = getProductVariants(product);
         const variant = options.variant ?? variants[0];
-        const lineId = cartLineId(product.documentId, variant.id);
-        const displayName =
-          variant.id === 'default'
-            ? product.name
-            : `${product.name} (${variant.label})`;
-
-        const imageUrl = resolveProductImageUrl(product, variant);
+        const line = buildCartLine(product, variant, quantity);
 
         const items = [...get().items];
-        const idx = items.findIndex((i) => i.lineId === lineId);
+        const idx = items.findIndex((i) => i.lineId === line.lineId);
 
         if (idx >= 0) {
-          items[idx].quantity += quantity;
+          const nextQty = items[idx].quantity + quantity;
+          items[idx] = {
+            ...items[idx],
+            quantity: nextQty,
+            unitPrice: resolveUnitPrice(
+              items[idx].baseUnitPrice,
+              nextQty,
+              items[idx].pricingTiers
+            ),
+          };
         } else {
-          items.push({
-            lineId,
-            productDocumentId: product.documentId,
-            variantId: variant.id !== 'default' ? variant.id : undefined,
-            variantLabel: variant.id !== 'default' ? variant.label : undefined,
-            name: displayName,
-            unit: product.unit,
-            unitPrice: Number(variant.price),
-            quantity,
-            imageUrl,
-          });
+          items.push(line);
         }
         set({ items });
       },
@@ -111,7 +120,14 @@ export const useCartStore = create<CartState>()(
           return;
         }
         set({
-          items: get().items.map((i) => (i.lineId === lineId ? { ...i, quantity } : i)),
+          items: get().items.map((i) => {
+            if (i.lineId !== lineId) return i;
+            return {
+              ...i,
+              quantity,
+              unitPrice: resolveUnitPrice(i.baseUnitPrice, quantity, i.pricingTiers),
+            };
+          }),
         });
       },
 
@@ -125,6 +141,7 @@ export const useCartStore = create<CartState>()(
           variantLabel: line.variantLabel,
           name: line.productName,
           unit: line.unit ?? 'Piece',
+          baseUnitPrice: Number(line.unitPrice),
           unitPrice: Number(line.unitPrice),
           quantity: line.quantity,
         }));
@@ -144,7 +161,7 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: 'ark-cart',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({ items: state.items }),
       migrate: (persisted, version) => {
@@ -156,8 +173,21 @@ export const useCartStore = create<CartState>()(
             lineId:
               item.lineId ??
               cartLineId(item.productDocumentId, item.variantId),
+            baseUnitPrice: item.baseUnitPrice ?? item.unitPrice,
           })),
         };
+        if (version < 3) {
+          return {
+            items: next.items.map((item) => ({
+              ...item,
+              unitPrice: resolveUnitPrice(
+                item.baseUnitPrice,
+                item.quantity,
+                item.pricingTiers
+              ),
+            })),
+          };
+        }
         if (version < 2 && state.deliveryAddress) {
           return next;
         }

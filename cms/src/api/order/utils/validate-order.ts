@@ -8,6 +8,7 @@ import {
   calcTaxes,
   calcTotal,
 } from './pricing';
+import { pickPricingTiers, resolveUnitPrice } from './unit-pricing';
 
 type IncomingItem = {
   productDocumentId?: string;
@@ -31,7 +32,12 @@ type ValidatedItem = {
 };
 
 function findVariant(
-  variants: Array<{ optionKey?: string; label?: string; price?: number }> | undefined,
+  variants: Array<{
+    optionKey?: string;
+    label?: string;
+    price?: number;
+    pricingTiers?: Array<{ minQty?: number; unitPrice?: number | string }>;
+  }> | undefined,
   variantId?: string
 ) {
   if (!variants?.length) return null;
@@ -80,7 +86,10 @@ export async function validateAndPriceOrder(
     if (item.productDocumentId) {
       const product = await strapi.db.query('api::product.product').findOne({
         where: { documentId: item.productDocumentId },
-        populate: ['variants'],
+        populate: {
+          variants: { populate: ['pricingTiers'] },
+          pricingTiers: true,
+        },
       });
 
       if (!product) {
@@ -93,7 +102,9 @@ export async function validateAndPriceOrder(
 
       const variant = findVariant(product.variants, variantId);
       if (variant) {
-        unitPrice = Number(variant.price ?? product.price);
+        const basePrice = Number(variant.price ?? product.price);
+        const tiers = pickPricingTiers(variant, product);
+        unitPrice = resolveUnitPrice(basePrice, quantity, tiers);
         variantId = variant.optionKey ?? variantId;
         variantLabel = variant.label ?? variantLabel;
         productName =
@@ -101,7 +112,8 @@ export async function validateAndPriceOrder(
             ? `${product.name} (${variant.label})`
             : product.name;
       } else {
-        unitPrice = Number(product.price);
+        const basePrice = Number(product.price);
+        unitPrice = resolveUnitPrice(basePrice, quantity, product.pricingTiers);
         productName = product.name;
       }
       unit = product.unit;

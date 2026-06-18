@@ -13,6 +13,7 @@ import {
 
 import { AppHeader } from '@/components/AppHeader';
 import { CategoryTile } from '@/components/CategoryTile';
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { ProductCarousel } from '@/components/ProductCarousel';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { fetchAppConfig, fetchCategories, fetchOrders, fetchProducts } from '@/lib/api';
@@ -123,9 +124,7 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.bannerTitle}>Bulk Quote Discounts</Text>
             <Text style={styles.bannerSub}>Save up to 15% on truckload orders.</Text>
-            <View style={styles.bannerBtn}>
-              <Text style={styles.bannerBtnText}>GET QUOTE</Text>
-            </View>
+            <PrimaryButton label="Get Quote" size="sm" onPress={() => router.push('/quote')} />
           </View>
         </Pressable>
 

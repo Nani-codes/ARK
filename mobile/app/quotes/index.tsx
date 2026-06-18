@@ -53,16 +53,21 @@ export default function QuoteHistoryScreen() {
                   </View>
                 </View>
                 <Text style={styles.meta}>
-                  {q.quantityTons} tons · {formatOrderDate(q.createdAt)}
+                  {q.quantity} {q.quantityUnit}
+                  {q.quotedPrice ? ` · Quote: ₹${q.quotedPrice.toLocaleString('en-IN')}` : ''}
+                  {' · '}
+                  {formatOrderDate(q.createdAt)}
                 </Text>
                 <Text style={styles.address} numberOfLines={2}>{q.siteAddress}</Text>
               </View>
             );
           })}
-          <Pressable style={styles.newBtn} onPress={() => router.push('/quote')}>
-            <MaterialIcons name="add" size={20} color={colors.secondary} />
-            <Text style={styles.newBtnText}>New Quote Request</Text>
-          </Pressable>
+          <PrimaryButton
+            label="New Quote Request"
+            variant="secondary"
+            icon={<MaterialIcons name="add" size={20} color={colors.secondary} />}
+            onPress={() => router.push('/quote')}
+          />
         </ScrollView>
       )}
     </View>

@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -9,7 +9,8 @@ import { AppHeader } from '@/components/AppHeader';
 import { DeliverySelectorModal } from '@/components/DeliverySelectorModal';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeader } from '@/components/SectionHeader';
-import { createOrder } from '@/lib/api';
+import { TemperatureBadge } from '@/components/TemperatureBadge';
+import { createOrder, fetchAppConfig } from '@/lib/api';
 import { formatFullAddress } from '@/lib/addressFormat';
 import { NEFT_BANK_DETAILS } from '@/lib/orderDisplay';
 import {
@@ -20,7 +21,9 @@ import {
   COD_MAX_TOTAL,
   deliveryFeeLabel,
   GST_LABEL,
+  isWithinOperatingHours,
 } from '@/lib/pricing';
+import { estimateDeliveryAt, formatDeliveryEta } from '@/lib/deliveryEstimate';
 import { processOnlinePayment } from '@/lib/razorpay';
 import { isPincodeServiceable, loadServiceablePincodes } from '@/lib/serviceability';
 import { colors, spacing, typography } from '@/lib/theme';
@@ -87,6 +90,41 @@ export default function CheckoutScreen() {
   const [selectorVisible, setSelectorVisible] = useState(false);
   const [isServiceable, setIsServiceable] = useState<boolean | null>(null);
   const queryClient = useQueryClient();
+
+  const { data: appConfigRes } = useQuery({
+    queryKey: ['app-config'],
+    queryFn: fetchAppConfig,
+  });
+  const appConfig = appConfigRes?.data;
+  const operatingStart = appConfig?.operatingHoursStart ?? 8;
+  const operatingEnd = appConfig?.operatingHoursEnd ?? 20;
+  const withinHours = isWithinOperatingHours(operatingStart, operatingEnd);
+
+  const etaPreview = useMemo(
+    () => formatDeliveryEta(estimateDeliveryAt(deliverySlot)),
+    [deliverySlot]
+  );
+  const hasTemperatureItems = items.some((item) => item.temperatureSensitive);
+
+  const slotOptions = useMemo(
+    () =>
+      SLOT_OPTIONS.map((slot) => ({
+        ...slot,
+        disabled:
+          !withinHours && (slot.key === 'asap' || slot.key === 'two_hour'),
+        sub:
+          !withinHours && (slot.key === 'asap' || slot.key === 'two_hour')
+            ? `Available ${operatingStart}:00–${operatingEnd}:00 IST`
+            : slot.sub,
+      })),
+    [withinHours, operatingStart, operatingEnd]
+  );
+
+  useEffect(() => {
+    if (!withinHours && (deliverySlot === 'asap' || deliverySlot === 'two_hour')) {
+      setDeliverySlot('next_day');
+    }
+  }, [withinHours, deliverySlot]);
 
   const slotsDisabled = isServiceable === false;
 
@@ -169,7 +207,14 @@ export default function CheckoutScreen() {
         clear();
       }
       queryClient.invalidateQueries({ queryKey: ['orders'] });
-      router.replace({ pathname: '/order-success', params: { orderNumber: res.data.orderNumber } });
+      router.replace({
+        pathname: '/order-success',
+        params: {
+          orderNumber: res.data.orderNumber,
+          estimatedDeliveryAt:
+            res.data.estimatedDeliveryAt ?? estimateDeliveryAt(deliverySlot).toISOString(),
+        },
+      });
     },
   });
 
@@ -240,21 +285,38 @@ export default function CheckoutScreen() {
           </Pressable>
         )}
 
+        {hasTemperatureItems ? (
+          <View style={{ marginBottom: spacing.unit4 }}>
+            <TemperatureBadge
+              note={
+                items.find((i) => i.temperatureNote)?.temperatureNote ??
+                'Your cart includes temperature-sensitive materials. We schedule these for priority morning slots when possible.'
+              }
+            />
+          </View>
+        ) : null}
+
         <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>DELIVERY SLOT (OPTIONAL)</Text>
+        {!slotsDisabled ? (
+          <View style={styles.etaBanner}>
+            <MaterialIcons name="schedule" size={18} color={colors.primary} />
+            <Text style={styles.etaBannerText}>Estimated arrival: {etaPreview}</Text>
+          </View>
+        ) : null}
         <Pressable
           style={[styles.slotSummary, slotsDisabled && styles.payOptionDisabled]}
           onPress={() => !slotsDisabled && setShowSlotPicker((v) => !v)}
           disabled={slotsDisabled}>
           <View style={styles.slotSummaryText}>
             <Text style={[styles.slotSummaryTitle, slotsDisabled && styles.payTitleDisabled]}>
-              {SLOT_OPTIONS.find((s) => s.key === deliverySlot)?.label ?? 'ASAP'}
+              {slotOptions.find((s) => s.key === deliverySlot)?.label ?? 'ASAP'}
             </Text>
             <Text style={styles.slotSummarySub}>
               {slotsDisabled
                 ? 'Delivery options unavailable'
                 : showSlotPicker
                   ? 'Tap to collapse'
-                  : SLOT_OPTIONS.find((s) => s.key === deliverySlot)?.sub ?? 'Fastest available'}
+                  : slotOptions.find((s) => s.key === deliverySlot)?.sub ?? 'Fastest available'}
             </Text>
           </View>
           <MaterialIcons
@@ -265,11 +327,16 @@ export default function CheckoutScreen() {
         </Pressable>
         {showSlotPicker && !slotsDisabled ? (
           <>
-            {SLOT_OPTIONS.map((slot) => (
+            {slotOptions.map((slot) => (
               <Pressable
                 key={slot.key}
-                style={[styles.payOption, deliverySlot === slot.key && styles.payOptionActive]}
-                onPress={() => setDeliverySlot(slot.key)}>
+                style={[
+                  styles.payOption,
+                  deliverySlot === slot.key && styles.payOptionActive,
+                  slot.disabled && styles.payOptionDisabled,
+                ]}
+                onPress={() => !slot.disabled && setDeliverySlot(slot.key)}
+                disabled={slot.disabled}>
                 <View style={styles.radio}>
                   {deliverySlot === slot.key ? <View style={styles.radioDot} /> : null}
                 </View>
@@ -478,6 +545,16 @@ const styles = StyleSheet.create({
   slotSummaryTitle: { ...typography.labelLg, color: colors.primary },
   slotSummarySub: { ...typography.bodyMd, color: colors.onSurfaceVariant, marginTop: 2 },
   slotHint: { ...typography.bodyMd, color: colors.onSurfaceVariant, marginTop: spacing.unit2 },
+  etaBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.unit2,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 8,
+    padding: spacing.unit3,
+    marginBottom: spacing.unit2,
+  },
+  etaBannerText: { ...typography.bodyMd, color: colors.onSurface, flex: 1 },
   emptyAddress: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.unit3,
     backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1.5,

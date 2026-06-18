@@ -53,6 +53,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       'expo-secure-store',
       'expo-image',
       [
+        'expo-notifications',
+        {
+          icon: './assets/images/icon.png',
+          color: '#FFB800',
+        },
+      ],
+      [
         'expo-location',
         {
           locationWhenInUsePermission:

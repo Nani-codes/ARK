@@ -16,6 +16,12 @@ export type ProductVariant = {
   image?: StrapiMedia | null;
   /** Combination map when product has multiple option dimensions */
   options?: Record<string, string>;
+  pricingTiers?: PricingTier[];
+};
+
+export type PricingTier = {
+  minQty: number;
+  unitPrice: number;
 };
 
 export type VariantOption = {
@@ -49,6 +55,10 @@ export type Product = {
   variants?: ProductVariant[];
   replacementDays?: number;
   bulkPricingEnabled?: boolean;
+  bulkMinQuantity?: number;
+  temperatureSensitive?: boolean;
+  temperatureNote?: string;
+  pricingTiers?: PricingTier[];
   brand?: string;
   tags?: string[];
   specs?: ProductSpec[];
@@ -100,10 +110,17 @@ export type QuoteRequest = {
   id: number;
   documentId: string;
   productName: string;
-  quantityTons: number;
+  productDocumentId?: string;
+  variantLabel?: string;
+  quantity: number;
+  quantityUnit: string;
+  quantityTons?: number;
   siteAddress: string;
   instructions?: string;
-  quoteStatus: 'new' | 'contacted' | 'closed';
+  gstin?: string;
+  preferredDeliveryDate?: string;
+  quotedPrice?: number;
+  quoteStatus: 'new' | 'contacted' | 'quoted' | 'closed';
   createdAt: string;
 };
 

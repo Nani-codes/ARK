@@ -18,7 +18,7 @@ import type {
 } from './types';
 
 const PRODUCT_POPULATE =
-  'populate[image]=true&populate[category]=true&populate[variants][populate]=image&populate[specs]=true';
+  'populate[image]=true&populate[category]=true&populate[pricingTiers]=true&populate[variants][populate][0]=image&populate[variants][populate][1]=pricingTiers&populate[specs]=true';
 
 export type ProductSearchParams = {
   q?: string;
@@ -150,16 +150,28 @@ export async function fetchOrder(documentId: string) {
 }
 
 export function createQuoteRequest(payload: {
+  productDocumentId?: string;
   productName: string;
-  quantityTons: number;
+  variantLabel?: string;
+  quantity: number;
+  quantityUnit: string;
   siteAddress: string;
   instructions?: string;
+  gstin?: string;
+  preferredDeliveryDate?: string;
   phone?: string;
 }) {
   return strapiFetch<StrapiSingleResponse<QuoteRequest>>('/api/quote-requests', {
     method: 'POST',
     auth: true,
-    body: { data: payload },
+    body: {
+      data: {
+        ...payload,
+        product: payload.productDocumentId,
+        quantityTons:
+          payload.quantityUnit.toLowerCase().includes('ton') ? payload.quantity : undefined,
+      },
+    },
   }).then((res) => ({ ...res, data: normalizeQuote(res.data) }));
 }
 
@@ -235,6 +247,14 @@ export function updateMyProfile(payload: {
     method: 'PUT',
     auth: true,
     body: payload,
+  });
+}
+
+export function savePushToken(expoPushToken: string) {
+  return strapiFetch<{ ok: boolean }>('/api/user-profile/push-token', {
+    method: 'PUT',
+    auth: true,
+    body: { expoPushToken },
   });
 }
 

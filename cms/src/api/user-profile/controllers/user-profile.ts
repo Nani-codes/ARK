@@ -26,6 +26,7 @@ export default {
     if (body.professionType !== undefined) data.professionType = body.professionType;
     if (body.professionalBio !== undefined) data.professionalBio = body.professionalBio;
     if (body.displayName !== undefined) data.displayName = body.displayName;
+    if (typeof body.expoPushToken === 'string') data.expoPushToken = body.expoPushToken;
 
     if (body.isProfessional === false) {
       data.listedAsProfessional = false;
@@ -42,6 +43,23 @@ export default {
     });
 
     ctx.send({ user: mapAuthUser(updated) });
+  },
+
+  async savePushToken(ctx) {
+    const user = await resolveAuthUser(ctx);
+    if (!user) return ctx.unauthorized('You must be logged in');
+
+    const { expoPushToken } = ctx.request.body ?? {};
+    if (typeof expoPushToken !== 'string' || !expoPushToken.trim()) {
+      return ctx.badRequest('expoPushToken is required');
+    }
+
+    await strapi.db.query('plugin::users-permissions.user').update({
+      where: { id: user.id },
+      data: { expoPushToken: expoPushToken.trim() },
+    });
+
+    ctx.send({ ok: true });
   },
 
   async listProfessionals(ctx) {

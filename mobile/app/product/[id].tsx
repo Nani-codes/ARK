@@ -17,10 +17,19 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { AddToCartControl } from '@/components/AddToCartControl';
 import { AppHeader } from '@/components/AppHeader';
 import { CollapsibleSection } from '@/components/CollapsibleSection';
+import { PricingTierTable } from '@/components/PricingTierTable';
 import { ProductPriceBlock } from '@/components/ProductPriceBlock';
+import { TemperatureBadge } from '@/components/TemperatureBadge';
 import { VariantPicker } from '@/components/VariantPicker';
 import { fetchProduct } from '@/lib/api';
-import { formatInr, getProductDisplayPricing, getProductVariants, resolveProductImageUrl } from '@/lib/productPricing';
+import { slotEtaSummary } from '@/lib/deliveryEstimate';
+import {
+  formatInr,
+  getEffectivePricingTiers,
+  getProductDisplayPricing,
+  getProductVariants,
+  resolveProductImageUrl,
+} from '@/lib/productPricing';
 import {
   findVariantByOptions,
   getInitialSelection,
@@ -57,6 +66,11 @@ export default function ProductDetailScreen() {
     [product, selectedOptions]
   );
 
+  const cartQty =
+    useCartStore((s) =>
+      s.items.find((i) => i.lineId === cartLineId(product?.documentId ?? '', selectedVariant?.id))?.quantity
+    ) ?? 1;
+
   if (isLoading || !product || !selectedVariant) {
     return (
       <View style={styles.loading}>
@@ -68,7 +82,12 @@ export default function ProductDetailScreen() {
 
   const uri = resolveProductImageUrl(product, selectedVariant);
   const specs = product.specs ?? [];
-  const { price, compareAtPrice, percent } = getProductDisplayPricing(product, selectedVariant);
+  const pricingTiers = getEffectivePricingTiers(product, selectedVariant);
+  const { price, compareAtPrice, percent } = getProductDisplayPricing(
+    product,
+    selectedVariant,
+    cartQty
+  );
   const replacementDays = product.replacementDays ?? 7;
   const minVariantPrice = Math.min(...variants.map((v) => v.price));
   const unitLabel = product.priceUnitLabel ?? (product.unit === 'Sq Ft' ? '₹/ft²' : `/${product.unit}`);
@@ -129,6 +148,16 @@ export default function ProductDetailScreen() {
             percent={percent}
             size="lg"
           />
+          {pricingTiers?.length ? (
+            <PricingTierTable tiers={pricingTiers} unit={product.unit} currentQty={cartQty} />
+          ) : null}
+          <View style={styles.deliveryEtaRow}>
+            <MaterialIcons name="local-shipping" size={16} color={colors.primary} />
+            <Text style={styles.deliveryEtaText}>Standard delivery: {slotEtaSummary('asap')}</Text>
+          </View>
+          {product.temperatureSensitive ? (
+            <TemperatureBadge note={product.temperatureNote} compact />
+          ) : null}
           {productHasSelectableVariants(product) ? (
             <Text style={styles.startsAt}>
               Starts at {formatInr(minVariantPrice)}
@@ -270,6 +299,13 @@ const styles = StyleSheet.create({
   stockText: { ...typography.labelMd, color: colors.onPrimary, textTransform: 'uppercase' },
   name: { ...typography.headlineLgMobile, color: colors.primary, marginBottom: spacing.unit3 },
   startsAt: { ...typography.labelLg, color: colors.onSurfaceVariant, marginTop: spacing.unit1 },
+  deliveryEtaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.unit2,
+    marginTop: spacing.unit3,
+  },
+  deliveryEtaText: { ...typography.bodyMd, color: colors.onSurfaceVariant },
   trustRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

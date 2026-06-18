@@ -1,10 +1,11 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DeliverySelectorModal } from '@/components/DeliverySelectorModal';
+import { Logo } from '@/components/Logo';
 import { colors, spacing, typography } from '@/lib/theme';
 import { useCartStore } from '@/stores/cart';
 import { useLocationStore } from '@/stores/location';
@@ -72,7 +73,7 @@ export function AppHeader({
             style={styles.logoBtn}
             accessibilityRole="button"
             accessibilityLabel="ARK Home">
-            <Image source={require('@/assets/images/Logo.png')} style={styles.logo} />
+            <Logo size="md" />
           </Pressable>
         ) : null}
         {showLocation ? (

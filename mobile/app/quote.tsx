@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -16,6 +16,7 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { createQuoteRequest, fetchProducts } from '@/lib/api';
 import { formatFullAddress } from '@/lib/addressFormat';
 import { colors, spacing, typography } from '@/lib/theme';
+import type { Product } from '@/lib/types';
 import { useAddressStore } from '@/stores/addresses';
 import { useAuthStore } from '@/stores/auth';
 
@@ -30,18 +31,31 @@ export default function QuoteScreen() {
     select: (res) => res.data.filter((p) => p.bulkPricingEnabled),
   });
 
-  const options = bulkProducts?.length
-    ? bulkProducts.map((p) => p.name)
-    : ['Ready Mix Concrete (M25)', 'TMT Steel Bars (500D)', 'Portland Cement (OPC 53)'];
-
-  const [productName, setProductName] = useState(options[0] ?? '');
-  const [quantityTons, setQuantityTons] = useState('');
+  const products = bulkProducts ?? [];
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [variantLabel, setVariantLabel] = useState('');
+  const [quantity, setQuantity] = useState('');
   const [siteAddress, setSiteAddress] = useState('');
   const [instructions, setInstructions] = useState('');
+  const [gstin, setGstin] = useState('');
+  const [preferredDeliveryDate, setPreferredDeliveryDate] = useState('');
 
   useEffect(() => {
-    if (productParam) setProductName(decodeURIComponent(productParam));
-  }, [productParam]);
+    if (!products.length) return;
+    const byName = productParam
+      ? products.find((p) => p.name === decodeURIComponent(productParam))
+      : null;
+    setSelectedProduct(byName ?? products[0]);
+  }, [products, productParam]);
+
+  const quantityUnit = useMemo(() => {
+    if (!selectedProduct) return 'Metric Ton';
+    const unit = selectedProduct.unit.toLowerCase();
+    if (unit.includes('bag') || unit.includes('piece') || unit.includes('sq')) {
+      return selectedProduct.unit;
+    }
+    return 'Metric Ton';
+  }, [selectedProduct]);
 
   useEffect(() => {
     if (!siteAddress && selectedAddress) {
@@ -49,21 +63,22 @@ export default function QuoteScreen() {
     }
   }, [selectedAddress, siteAddress]);
 
-  useEffect(() => {
-    if (options.length && !options.includes(productName)) {
-      setProductName(options[0]);
-    }
-  }, [options, productName]);
-
   const submit = useMutation({
-    mutationFn: () =>
-      createQuoteRequest({
-        productName,
-        quantityTons: parseFloat(quantityTons),
+    mutationFn: () => {
+      if (!selectedProduct) throw new Error('Select a product');
+      return createQuoteRequest({
+        productDocumentId: selectedProduct.documentId,
+        productName: selectedProduct.name,
+        variantLabel: variantLabel.trim() || undefined,
+        quantity: parseFloat(quantity),
+        quantityUnit,
         siteAddress,
         instructions,
+        gstin: gstin.trim() || undefined,
+        preferredDeliveryDate: preferredDeliveryDate.trim() || undefined,
         phone: user?.phone,
-      }),
+      });
+    },
     onSuccess: () => {
       Alert.alert('Request Sent', 'Our team will contact you within 2 hours.', [
         { text: 'View Requests', onPress: () => router.replace('/quotes' as never) },
@@ -76,8 +91,20 @@ export default function QuoteScreen() {
   });
 
   const handleSubmit = () => {
-    if (!quantityTons || !siteAddress.trim()) {
+    if (!selectedProduct) {
+      Alert.alert('Select product', 'Choose a product for your bulk quote.');
+      return;
+    }
+    const qty = parseFloat(quantity);
+    if (!qty || qty <= 0 || !siteAddress.trim()) {
       Alert.alert('Missing fields', 'Please enter quantity and site address.');
+      return;
+    }
+    if (selectedProduct.bulkMinQuantity && qty < selectedProduct.bulkMinQuantity) {
+      Alert.alert(
+        'Minimum quantity',
+        `Minimum bulk order for this product is ${selectedProduct.bulkMinQuantity} ${quantityUnit}.`
+      );
       return;
     }
     submit.mutate();
@@ -95,23 +122,41 @@ export default function QuoteScreen() {
 
         <Text style={styles.label}>Product</Text>
         <View style={styles.picker}>
-          {options.map((opt) => (
+          {products.map((product) => (
             <Pressable
-              key={opt}
-              style={[styles.pickerOpt, productName === opt && styles.pickerOptActive]}
-              onPress={() => setProductName(opt)}>
-              <Text style={styles.pickerOptText}>{opt}</Text>
+              key={product.documentId}
+              style={[
+                styles.pickerOpt,
+                selectedProduct?.documentId === product.documentId && styles.pickerOptActive,
+              ]}
+              onPress={() => setSelectedProduct(product)}>
+              <Text style={styles.pickerOptText}>{product.name}</Text>
+              {product.bulkMinQuantity ? (
+                <Text style={styles.pickerHint}>Min {product.bulkMinQuantity} {product.unit}</Text>
+              ) : null}
             </Pressable>
           ))}
         </View>
 
-        <Text style={styles.label}>Quantity (Metric Tons)</Text>
+        {selectedProduct?.variants && selectedProduct.variants.length > 1 ? (
+          <>
+            <Text style={styles.label}>Variant / Size (optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. 10 Bags, 50mm thickness"
+              value={variantLabel}
+              onChangeText={setVariantLabel}
+            />
+          </>
+        ) : null}
+
+        <Text style={styles.label}>Quantity ({quantityUnit})</Text>
         <TextInput
           style={styles.input}
-          placeholder="e.g. 250"
+          placeholder={quantityUnit.toLowerCase().includes('ton') ? 'e.g. 250' : 'e.g. 500'}
           keyboardType="decimal-pad"
-          value={quantityTons}
-          onChangeText={setQuantityTons}
+          value={quantity}
+          onChangeText={setQuantity}
         />
 
         <Text style={styles.label}>Site Address</Text>
@@ -122,6 +167,23 @@ export default function QuoteScreen() {
           numberOfLines={3}
           value={siteAddress}
           onChangeText={setSiteAddress}
+        />
+
+        <Text style={styles.label}>GSTIN (optional)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="22AAAAA0000A1Z5"
+          autoCapitalize="characters"
+          value={gstin}
+          onChangeText={setGstin}
+        />
+
+        <Text style={styles.label}>Preferred Delivery Date (optional)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="YYYY-MM-DD"
+          value={preferredDeliveryDate}
+          onChangeText={setPreferredDeliveryDate}
         />
 
         <Text style={styles.label}>Special Instructions</Text>
@@ -150,7 +212,12 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.containerMargin, paddingBottom: spacing.unit12 },
   heading: { ...typography.headlineLgMobile, color: colors.primary, marginBottom: spacing.unit2 },
   sub: { ...typography.bodyMd, color: colors.onSurfaceVariant, marginBottom: spacing.unit8 },
-  label: { ...typography.labelLg, color: colors.primary, marginBottom: spacing.unit1, marginTop: spacing.unit3 },
+  label: {
+    ...typography.labelLg,
+    color: colors.primary,
+    marginBottom: spacing.unit1,
+    marginTop: spacing.unit3,
+  },
   input: {
     borderWidth: 1,
     borderColor: colors.primaryContainer,
@@ -167,12 +234,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.outlineVariant,
-    ...typography.bodyMd,
-    color: colors.onSurface,
   },
   pickerOptActive: {
     borderColor: colors.secondary,
     backgroundColor: colors.secondaryContainer,
   },
   pickerOptText: { ...typography.bodyMd, color: colors.onSurface },
+  pickerHint: { ...typography.labelMd, color: colors.onSurfaceVariant, marginTop: 4 },
 });

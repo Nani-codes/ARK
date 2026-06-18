@@ -1,0 +1,21 @@
+{
+  "collectionName": "components_product_pricing_tiers",
+  "info": {
+    "displayName": "Quantity price tier",
+    "description": "Unit price when customer buys at least minQty items",
+    "icon": "layer"
+  },
+  "options": {},
+  "attributes": {
+    "minQty": {
+      "type": "integer",
+      "required": true,
+      "min": 2
+    },
+    "unitPrice": {
+      "type": "decimal",
+      "required": true,
+      "min": 0
+    }
+  }
+}

@@ -18,6 +18,7 @@ export const QUOTE_STATUS_STYLES: Record<
 > = {
   new: { bg: colors.surfaceContainerHigh, text: colors.onSurfaceVariant, label: 'Submitted' },
   contacted: { bg: colors.primaryContainer, text: '#ffb800', label: 'Contacted' },
+  quoted: { bg: colors.secondaryContainer, text: colors.primary, label: 'Quoted' },
   closed: { bg: colors.successBg, text: colors.success, label: 'Closed' },
 };
 

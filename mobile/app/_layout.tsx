@@ -11,6 +11,7 @@ import { useLocationStore } from '@/stores/location';
 
 import { CartToast } from '@/components/CartToast';
 import { RazorpayWebCheckoutModal } from '@/components/RazorpayWebCheckoutModal';
+import { useNotificationSetup } from '@/hooks/useNotifications';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -20,6 +21,7 @@ const queryClient = new QueryClient({
 
 export default function RootLayout() {
   const hydrate = useAuthStore((s) => s.hydrate);
+  useNotificationSetup();
   const [fontsLoaded, fontError] = useFonts({
     ...MaterialIcons.font,
   });

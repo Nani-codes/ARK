@@ -28,6 +28,11 @@
       "required": false,
       "allowedTypes": ["images"]
     },
+    "pricingTiers": {
+      "type": "component",
+      "repeatable": true,
+      "component": "product.pricing-tier"
+    },
     "choices": {
       "type": "component",
       "repeatable": true,

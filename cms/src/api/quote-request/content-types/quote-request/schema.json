@@ -20,13 +20,28 @@
       "type": "string",
       "required": true
     },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
+    },
     "productName": {
       "type": "string",
       "required": true
     },
-    "quantityTons": {
+    "variantLabel": {
+      "type": "string"
+    },
+    "quantity": {
       "type": "decimal",
       "required": true
+    },
+    "quantityUnit": {
+      "type": "string",
+      "default": "Metric Ton"
+    },
+    "quantityTons": {
+      "type": "decimal"
     },
     "siteAddress": {
       "type": "text",
@@ -35,9 +50,18 @@
     "instructions": {
       "type": "text"
     },
+    "gstin": {
+      "type": "string"
+    },
+    "preferredDeliveryDate": {
+      "type": "date"
+    },
+    "quotedPrice": {
+      "type": "decimal"
+    },
     "quoteStatus": {
       "type": "enumeration",
-      "enum": ["new", "contacted", "closed"],
+      "enum": ["new", "contacted", "quoted", "closed"],
       "default": "new",
       "required": true
     }

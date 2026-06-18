@@ -96,3 +96,36 @@ npm run develop
 ```
 
 Sample products are recreated automatically.
+
+---
+
+## Quantity price tiers
+
+Add **Quantity price tier** rows on the product or on individual **Price option** rows.
+
+| Field | Example |
+|-------|---------|
+| **Min qty** | `10` |
+| **Unit price** | `415` |
+
+When a customer buys at least **Min qty**, the app uses **Unit price** instead of the base price. Variant-level tiers override product-level tiers.
+
+---
+
+## Temperature-sensitive products
+
+| Field | When to use |
+|-------|-------------|
+| **Temperature sensitive** | ON for items needing cool/dry handling |
+| **Temperature note** | Short instruction shown on product & checkout |
+
+---
+
+## Bulk quote fields
+
+| Field | Purpose |
+|-------|---------|
+| **Bulk pricing enabled** | Shows bulk quote CTA in app |
+| **Bulk min quantity** | Minimum qty for quote form validation |
+
+Quote requests in Strapi now link to the **Product**, store **Quantity** + **Quantity unit**, optional **GSTIN**, and **Preferred delivery date**. Set **Quoted price** when replying to the customer.

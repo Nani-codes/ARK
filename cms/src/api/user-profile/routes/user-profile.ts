@@ -21,6 +21,16 @@ export default {
       },
     },
     {
+      method: 'PUT',
+      path: '/user-profile/push-token',
+      handler: 'user-profile.savePushToken',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
       method: 'GET',
       path: '/user-profile/professionals',
       handler: 'user-profile.listProfessionals',

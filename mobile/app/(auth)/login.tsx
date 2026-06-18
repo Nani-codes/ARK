@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { Logo } from '@/components/Logo';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { sendOtp } from '@/lib/strapi';
 import { colors, spacing, typography } from '@/lib/theme';
@@ -44,9 +45,7 @@ export default function LoginScreen() {
       style={[styles.container, { paddingTop: insets.top + spacing.unit8 }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.brand}>
-        <View style={styles.logoBox}>
-          <Text style={styles.logoText}>ARK</Text>
-        </View>
+        <Logo size="hero" style={styles.logoWrap} />
         <Text style={styles.tagline}>Industrial Procurement Simplified</Text>
       </View>
 
@@ -82,18 +81,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: spacing.containerMargin },
   brand: { alignItems: 'center', marginBottom: spacing.unit12 },
-  logoBox: {
-    width: 96,
-    height: 96,
-    backgroundColor: colors.primaryContainer,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.unit4,
-    borderWidth: 1,
-    borderColor: colors.outline,
-  },
-  logoText: { ...typography.headlineLgMobile, color: colors.onPrimary, fontWeight: '800' },
+  logoWrap: { marginBottom: spacing.unit4 },
   tagline: { ...typography.labelLg, color: colors.onSurfaceVariant },
   form: { flex: 1 },
   heading: { ...typography.headlineLgMobile, color: colors.primary, marginBottom: spacing.unit1 },

@@ -1,4 +1,4 @@
-import type { Product, ProductSpec, ProductVariant, StrapiMedia, VariantOption } from '@/lib/types';
+import type { Product, ProductSpec, ProductVariant, PricingTier, StrapiMedia, VariantOption } from '@/lib/types';
 
 type StrapiMediaRow = {
   url?: string;
@@ -13,6 +13,7 @@ type StrapiVariantRow = {
   image?: StrapiMediaRow | null;
   options?: Record<string, string> | null;
   choices?: Array<{ groupName?: string; choice?: string }> | null;
+  pricingTiers?: Array<{ minQty?: number; unitPrice?: number | string }> | null;
   id?: string;
 };
 
@@ -32,6 +33,7 @@ type RawProduct = Product & {
   variantOptionGroups?: StrapiOptionGroupRow[] | null;
   variantOptions?: VariantOption[] | null;
   specs?: StrapiSpecRow[] | LegacySpecs | null;
+  pricingTiers?: Array<{ minQty?: number; unitPrice?: number | string }> | null;
 };
 
 type StrapiSpecRow = {
@@ -92,6 +94,20 @@ function normalizeVariantOptions(
   return undefined;
 }
 
+function normalizePricingTiers(
+  rows?: Array<{ minQty?: number; unitPrice?: number | string }> | null
+): PricingTier[] | undefined {
+  if (!rows?.length) return undefined;
+  const tiers = rows
+    .filter((row) => row.minQty != null && row.unitPrice != null)
+    .map((row) => ({
+      minQty: Number(row.minQty),
+      unitPrice: Number(row.unitPrice),
+    }))
+    .filter((row) => row.minQty >= 2 && row.unitPrice > 0);
+  return tiers.length ? tiers : undefined;
+}
+
 function normalizeVariants(rows?: StrapiVariantRow[] | null): ProductVariant[] | undefined {
   if (!rows?.length) return undefined;
   return rows.map((row, index) => {
@@ -111,6 +127,7 @@ function normalizeVariants(rows?: StrapiVariantRow[] | null): ProductVariant[] |
           : undefined,
       image: normalizeMedia(row.image),
       options,
+      pricingTiers: normalizePricingTiers(row.pricingTiers),
     };
   });
 }
@@ -147,5 +164,6 @@ export function normalizeProduct(raw: RawProduct): Product {
     variantOptions: variantOptionGroups,
     variants: normalizeVariants(raw.variants as StrapiVariantRow[]),
     specs: normalizeSpecs(raw.specs),
+    pricingTiers: normalizePricingTiers(raw.pricingTiers),
   };
 }

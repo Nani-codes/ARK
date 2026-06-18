@@ -1,4 +1,4 @@
-import { optionGroup, spec, variant, variantCombo } from './catalog-helpers';
+import { optionGroup, pricingTier, spec, variant, variantCombo } from './catalog-helpers';
 
 export type CatalogProductSeed = {
   name: string;
@@ -17,6 +17,10 @@ export type CatalogProductSeed = {
   authenticityVerified?: boolean;
   priceUnitLabel?: string;
   bulkPricingEnabled?: boolean;
+  bulkMinQuantity?: number;
+  temperatureSensitive?: boolean;
+  temperatureNote?: string;
+  pricingTiers?: Array<{ minQty: number; unitPrice: number }>;
   replacementDays?: number;
   variantOptionName?: string;
   variantOptionGroups?: Array<{ groupName: string; choices: string }>;
@@ -74,6 +78,8 @@ export const CATALOG_PRODUCTS: CatalogProductSeed[] = [
       variant('1 ½"', 147, 210, 'one-half'),
       variant('2"', 309, 420, 'two'),
     ],
+    pricingTiers: [pricingTier(50, 14), pricingTier(200, 12)],
+    bulkMinQuantity: 100,
   },
   {
     name: 'ACC Gold Water Shield',
@@ -84,6 +90,8 @@ export const CATALOG_PRODUCTS: CatalogProductSeed[] = [
     description: 'Premium waterproof cement for exterior applications.',
     categorySlug: 'cement',
     inStock: true,
+    temperatureSensitive: true,
+    temperatureNote: 'Store in a cool, dry place. Avoid direct sunlight during transit.',
     replacementDays: 7,
     variantOptionName: 'Pack',
     variants: [

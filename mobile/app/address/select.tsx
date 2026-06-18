@@ -13,6 +13,7 @@ import {
 
 import { AddressCard } from '@/components/AddressCard';
 import { AppHeader } from '@/components/AppHeader';
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { formatFullAddress } from '@/lib/addressFormat';
 import { resolveCurrentLocation } from '@/lib/resolveLocation';
 import { colors, spacing, typography } from '@/lib/theme';
@@ -192,18 +193,18 @@ export default function AddressSelectScreen() {
                 Delivering to: {pendingAddress.flat}, {pendingAddress.city}
               </Text>
             </View>
-            <Pressable style={styles.deliverBtn} onPress={handleDeliverHere}>
-              <MaterialIcons name="check-circle-outline" size={20} color={colors.onSecondary} />
-              <Text style={styles.deliverBtnText}>Deliver Here</Text>
-            </Pressable>
+            <PrimaryButton
+              label="Deliver Here"
+              icon={<MaterialIcons name="check-circle-outline" size={20} color={colors.onSecondary} />}
+              onPress={handleDeliverHere}
+            />
           </>
         ) : (
-          <Pressable
-            style={styles.deliverBtn}
-            onPress={() => router.push('/address/add')}>
-            <MaterialIcons name="add" size={20} color={colors.onSecondary} />
-            <Text style={styles.deliverBtnText}>Add New Address</Text>
-          </Pressable>
+          <PrimaryButton
+            label="Add New Address"
+            icon={<MaterialIcons name="add" size={20} color={colors.onSecondary} />}
+            onPress={() => router.push('/address/add')}
+          />
         )}
       </View>
     </View>

@@ -4,10 +4,14 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { orderSuccessEtaMessage } from '@/lib/deliveryEstimate';
 import { brand, colors, spacing, typography } from '@/lib/theme';
 
 export default function OrderSuccessScreen() {
-  const { orderNumber } = useLocalSearchParams<{ orderNumber: string }>();
+  const { orderNumber, estimatedDeliveryAt } = useLocalSearchParams<{
+    orderNumber: string;
+    estimatedDeliveryAt?: string;
+  }>();
   const displayNum = orderNumber?.replace('ORD-', '') ?? '—';
 
   return (
@@ -18,10 +22,7 @@ export default function OrderSuccessScreen() {
           <MaterialIcons name="check-circle" size={64} color={brand.goldBright} />
         </View>
         <Text style={styles.title}>Order #{displayNum} Placed Successfully!</Text>
-        <Text style={styles.sub}>
-          Your construction materials are being packed. Expect delivery at your site in approximately
-          60 mins.
-        </Text>
+        <Text style={styles.sub}>{orderSuccessEtaMessage(estimatedDeliveryAt)}</Text>
         <View style={styles.actions}>
           <PrimaryButton label="Track Order" onPress={() => router.replace('/(tabs)/orders')} />
           <PrimaryButton

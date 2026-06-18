@@ -110,6 +110,22 @@
     },
     "priceUnitLabel": {
       "type": "string"
+    },
+    "temperatureSensitive": {
+      "type": "boolean",
+      "default": false
+    },
+    "temperatureNote": {
+      "type": "string"
+    },
+    "pricingTiers": {
+      "type": "component",
+      "repeatable": true,
+      "component": "product.pricing-tier"
+    },
+    "bulkMinQuantity": {
+      "type": "integer",
+      "min": 1
     }
   }
 }

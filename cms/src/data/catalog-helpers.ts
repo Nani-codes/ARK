@@ -62,6 +62,11 @@ export function variantCombo(
   return { label, price, compareAtPrice, optionKey: key, choices, options };
 }
 
+/** One quantity price break */
+export function pricingTier(minQty: number, unitPrice: number) {
+  return { minQty, unitPrice };
+}
+
 /** One specification row */
 export function spec(label: string, value: string): SpecSeed {
   return { label, value };
