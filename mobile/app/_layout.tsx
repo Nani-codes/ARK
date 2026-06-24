@@ -80,6 +80,7 @@ export default function RootLayout() {
         <Stack.Screen name="profile/support" />
         <Stack.Screen name="profile/professional" />
         <Stack.Screen name="professionals/index" />
+        <Stack.Screen name="professionals/[id]" />
         <Stack.Screen name="returns/request" />
         <Stack.Screen name="address/select" />
         <Stack.Screen name="address/add" />

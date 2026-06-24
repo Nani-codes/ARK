@@ -13,10 +13,10 @@ import {
 
 import { AppHeader } from '@/components/AppHeader';
 import { CategoryTile } from '@/components/CategoryTile';
-import { PrimaryButton } from '@/components/PrimaryButton';
+import { HomeBannerCarousel } from '@/components/HomeBannerCarousel';
 import { ProductCarousel } from '@/components/ProductCarousel';
 import { ScreenBackground } from '@/components/ScreenBackground';
-import { fetchAppConfig, fetchCategories, fetchOrders, fetchProducts } from '@/lib/api';
+import { fetchAppConfig, fetchCategories, fetchHomeBanners, fetchOrders, fetchProducts } from '@/lib/api';
 import { colors, spacing, typography } from '@/lib/theme';
 import { useAuthStore } from '@/stores/auth';
 import type { Category } from '@/lib/types';
@@ -27,6 +27,11 @@ export default function HomeScreen() {
   const { data: configData } = useQuery({
     queryKey: ['app-config'],
     queryFn: () => fetchAppConfig(),
+  });
+
+  const { data: bannersData, isLoading: bannersLoading } = useQuery({
+    queryKey: ['home-banners'],
+    queryFn: fetchHomeBanners,
   });
 
   const { data: categoriesData, isLoading: catLoading } = useQuery({
@@ -75,6 +80,7 @@ export default function HomeScreen() {
   });
 
   const config = configData?.data;
+  const homeBanners = bannersData?.data ?? [];
   const categories = categoriesData?.data ?? [];
   const deals = dealsData?.data ?? [];
   const bestSellers = bestData?.data ?? [];
@@ -102,30 +108,21 @@ export default function HomeScreen() {
           </Pressable>
         ) : null}
 
+        <HomeBannerCarousel banners={homeBanners} loading={bannersLoading} />
+
         <View style={styles.trustBar}>
           <TrustItem icon="local-shipping" title="Pay on Delivery" sub="After verifying" />
           <TrustItem icon="published-with-changes" title="7 Day Replacement" sub="Quality issues" />
           <TrustItem icon="savings" title="5 Crore+ Savings" sub="Unbeatable prices" />
         </View>
 
-        <Pressable style={styles.prosCard} onPress={() => router.push('/professionals')}>
+        <Pressable style={styles.prosCard} onPress={() => router.push('/(tabs)/professionals' as never)}>
           <MaterialIcons name="groups" size={28} color={colors.secondary} />
           <View style={styles.prosText}>
             <Text style={styles.prosTitle}>Find Professionals</Text>
             <Text style={styles.prosSub}>Contractors & trades in Hyderabad</Text>
           </View>
           <MaterialIcons name="chevron-right" size={24} color={colors.iconMuted} />
-        </Pressable>
-
-        <Pressable style={styles.banner} onPress={() => router.push('/quote')}>
-          <View style={styles.bannerContent}>
-            <View style={styles.offerTag}>
-              <Text style={styles.offerText}>OFFER</Text>
-            </View>
-            <Text style={styles.bannerTitle}>Bulk Quote Discounts</Text>
-            <Text style={styles.bannerSub}>Save up to 15% on truckload orders.</Text>
-            <PrimaryButton label="Get Quote" size="sm" onPress={() => router.push('/quote')} />
-          </View>
         </Pressable>
 
         <ProductCarousel
@@ -245,34 +242,6 @@ const styles = StyleSheet.create({
   prosText: { flex: 1 },
   prosTitle: { ...typography.labelLg, color: colors.primary, fontWeight: '700' },
   prosSub: { ...typography.labelMd, color: colors.onSurfaceVariant, marginTop: 2 },
-  banner: {
-    marginHorizontal: spacing.containerMargin,
-    marginBottom: spacing.unit4,
-    backgroundColor: colors.primaryContainer,
-    borderRadius: 12,
-    padding: spacing.unit6,
-    minHeight: 140,
-  },
-  bannerContent: { maxWidth: '80%' },
-  offerTag: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.secondaryContainer,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
-    marginBottom: 8,
-  },
-  offerText: { ...typography.labelMd, color: colors.primary, fontWeight: '700' },
-  bannerTitle: { ...typography.headlineMd, color: colors.onPrimary, marginBottom: 4 },
-  bannerSub: { ...typography.bodyMd, color: 'rgba(255,255,255,0.75)', marginBottom: 12 },
-  bannerBtn: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.secondary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  bannerBtnText: { ...typography.labelMd, color: colors.onSecondary, fontWeight: '700' },
   sectionHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
+import { GuestAuthPrompt } from '@/components/GuestAuthPrompt';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { fetchQuoteRequests } from '@/lib/api';
 import { formatOrderDate, QUOTE_STATUS_STYLES } from '@/lib/orderDisplay';
@@ -21,6 +22,21 @@ export default function QuoteHistoryScreen() {
   });
 
   const quotes = data?.data ?? [];
+
+  if (isHydrated && !token) {
+    return (
+      <View style={styles.container}>
+        <AppHeader title="Quote Requests" showBack showCart={false} showLocation={false} />
+        <GuestAuthPrompt
+          icon="description"
+          title="Sign in to view quote requests"
+          subtitle="Submit and track bulk quote requests after you create an account."
+          returnTo="/quotes"
+          message="Sign in to view your quote requests"
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

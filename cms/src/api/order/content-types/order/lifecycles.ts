@@ -9,8 +9,15 @@ type OrderRecord = {
   estimatedDeliveryAt?: string;
   documentId?: string;
   total?: number | string;
+  notifyPhone?: string;
   user?: { id?: number; username?: string; phone?: string } | number;
 };
+
+function normalizeNotifyPhone(value?: unknown): string | undefined {
+  if (value == null || value === '') return undefined;
+  const digits = String(value).replace(/\D/g, '').slice(-10);
+  return digits.length === 10 ? digits : undefined;
+}
 
 function resolveUserId(order: OrderRecord): number | undefined {
   if (typeof order.user === 'number') return order.user;
@@ -28,11 +35,12 @@ function phoneFromUsername(username?: string): string | undefined {
 async function resolveOrderNotifyTarget(
   order: OrderRecord
 ): Promise<{ userId?: number; phone?: string }> {
+  let notifyPhone = normalizeNotifyPhone(order.notifyPhone);
   let userId = resolveUserId(order);
   let phone =
     typeof order.user === 'object' ? order.user?.phone : undefined;
 
-  if (!userId || !phone) {
+  if (!notifyPhone || !userId || !phone) {
     const where = order.documentId
       ? { documentId: order.documentId }
       : order.id
@@ -45,6 +53,7 @@ async function resolveOrderNotifyTarget(
         populate: ['user'],
       });
       if (row) {
+        notifyPhone = notifyPhone ?? normalizeNotifyPhone((row as OrderRecord).notifyPhone);
         userId = userId ?? resolveUserId(row as OrderRecord);
         const rowUser = (row as OrderRecord).user;
         if (typeof rowUser === 'object') {
@@ -67,7 +76,7 @@ async function resolveOrderNotifyTarget(
       (ctx?.state?.user?.phone ? String(ctx.state.user.phone) : undefined);
   }
 
-  return { userId, phone };
+  return { userId, phone: notifyPhone ?? phone };
 }
 
 function orderStatusEvent(status?: string): NotificationEvent | null {
@@ -160,6 +169,10 @@ export default {
 
     if (!data.orderNumber) {
       data.orderNumber = `ORD-${Date.now().toString().slice(-8)}`;
+    }
+
+    if (data.notifyPhone != null) {
+      data.notifyPhone = normalizeNotifyPhone(data.notifyPhone) ?? null;
     }
   },
 

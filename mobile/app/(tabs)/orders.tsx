@@ -5,6 +5,7 @@ import { useCallback } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
+import { GuestAuthPrompt } from '@/components/GuestAuthPrompt';
 import { fetchOrders } from '@/lib/api';
 import { ORDER_STATUS_STYLES, orderDisplayNumber } from '@/lib/orderDisplay';
 import { colors, spacing, typography } from '@/lib/theme';
@@ -28,6 +29,21 @@ export default function OrdersScreen() {
   );
 
   const orders = data?.data ?? [];
+
+  if (isHydrated && !token) {
+    return (
+      <View style={styles.container}>
+        <AppHeader title="Order History" showCart={false} showSearch />
+        <GuestAuthPrompt
+          icon="receipt-long"
+          title="Sign in to view your orders"
+          subtitle="Track deliveries, reorder materials, and manage returns after you sign in."
+          returnTo="/(tabs)/orders"
+          message="Sign in to view your orders"
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

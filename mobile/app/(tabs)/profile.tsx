@@ -7,21 +7,26 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { fetchAppConfig } from '@/lib/api';
+import { isSignedIn, promptAuth } from '@/lib/authGate';
 import { professionLabel } from '@/lib/professions';
 import { brand, colors, spacing, typography } from '@/lib/theme';
 import { useAuthStore } from '@/stores/auth';
 
 const MENU_ITEMS = [
-  { icon: 'receipt-long' as const, label: 'My Orders', href: '/(tabs)/orders' },
-  { icon: 'description' as const, label: 'My Quote Requests', href: '/quotes' },
-  { icon: 'add-circle-outline' as const, label: 'Request Bulk Quote', href: '/quote' },
-  { icon: 'location-on' as const, label: 'Saved Addresses', href: '/address/select' },
-  { icon: 'business' as const, label: 'Manage GST Details', href: '/profile/gst' },
-  { icon: 'payments' as const, label: 'Payment Methods', href: '/profile/payments' },
-  { icon: 'lock-outline' as const, label: 'Change Password', href: '/(auth)/forgot-password' },
-  { icon: 'help-outline' as const, label: 'Help & Support', href: '/profile/support' },
-  { icon: 'groups' as const, label: 'Find Professionals', href: '/professionals' },
-  { icon: 'engineering' as const, label: 'Professional Profile', href: '/profile/professional' },
+  { icon: 'receipt-long' as const, label: 'My Orders', href: '/(tabs)/orders', requiresAuth: true },
+  { icon: 'description' as const, label: 'My Quote Requests', href: '/quotes', requiresAuth: true },
+  { icon: 'add-circle-outline' as const, label: 'Request Bulk Quote', href: '/quote', requiresAuth: false },
+  { icon: 'location-on' as const, label: 'Saved Addresses', href: '/address/select', requiresAuth: true },
+  { icon: 'business' as const, label: 'Manage GST Details', href: '/profile/gst', requiresAuth: false },
+  { icon: 'payments' as const, label: 'Payment Methods', href: '/profile/payments', requiresAuth: false },
+  { icon: 'lock-outline' as const, label: 'Change Password', href: '/(auth)/forgot-password', requiresAuth: true },
+  { icon: 'help-outline' as const, label: 'Help & Support', href: '/profile/support', requiresAuth: false },
+  {
+    icon: 'engineering' as const,
+    label: 'My Professional Profile',
+    href: '/profile/professional',
+    requiresAuth: true,
+  },
 ];
 
 export default function ProfileScreen() {
@@ -29,6 +34,7 @@ export default function ProfileScreen() {
   const logout = useAuthStore((s) => s.logout);
   const { data: configData } = useQuery({ queryKey: ['app-config'], queryFn: fetchAppConfig });
   const whatsapp = configData?.data?.whatsappNumber ?? '919876543210';
+  const signedIn = isSignedIn();
 
   const openWhatsApp = () => {
     Linking.openURL(
@@ -36,44 +42,83 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleMenuPress = (item: (typeof MENU_ITEMS)[number]) => {
+    if (!item.href) return;
+    if (item.requiresAuth && !signedIn) {
+      promptAuth({
+        returnTo: item.href,
+        message: `Sign in to access ${item.label.toLowerCase()}`,
+      });
+      return;
+    }
+    router.push(item.href as never);
+  };
+
   const handleLogout = async () => {
     await logout();
-    router.replace('/(auth)/login');
+    router.replace('/(tabs)' as never);
   };
 
   return (
     <View style={styles.container}>
       <AppHeader title="Profile" showLocation={false} variant="navy" showSearch />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <MaterialIcons name="person" size={40} color={colors.secondaryContainer} />
-            <View style={styles.verified}>
-              <MaterialIcons name="verified" size={14} color={colors.onSecondary} />
+        {signedIn ? (
+          <View style={styles.profileCard}>
+            <View style={styles.avatar}>
+              <MaterialIcons name="person" size={40} color={colors.secondaryContainer} />
+              <View style={styles.verified}>
+                <MaterialIcons name="verified" size={14} color={colors.onSecondary} />
+              </View>
             </View>
-          </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.name}>{user?.displayName ?? 'Contractor'}</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>
-                {user?.isProfessional
-                  ? user.listedAsProfessional
-                    ? 'LISTED PRO'
-                    : 'PROFESSIONAL'
-                  : 'PREMIUM MEMBER'}
+            <View style={styles.profileInfo}>
+              <Text style={styles.name}>{user?.displayName ?? 'Contractor'}</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {user?.isProfessional
+                    ? user.listedAsProfessional
+                      ? 'LISTED PRO'
+                      : 'PROFESSIONAL'
+                    : 'PREMIUM MEMBER'}
+                </Text>
+              </View>
+              {user?.isProfessional && user.professionType ? (
+                <Text style={styles.trade}>{professionLabel(user.professionType)}</Text>
+              ) : null}
+              <Text style={styles.contractorId}>
+                Contractor ID: {user?.contractorId ?? '—'}
               </Text>
+              {user?.phone ? <Text style={styles.phone}>+91 {user.phone}</Text> : null}
             </View>
-            {user?.isProfessional && user.professionType ? (
-              <Text style={styles.trade}>{professionLabel(user.professionType)}</Text>
-            ) : null}
-            <Text style={styles.contractorId}>
-              Contractor ID: {user?.contractorId ?? '—'}
-            </Text>
-            {user?.phone ? (
-              <Text style={styles.phone}>+91 {user.phone}</Text>
-            ) : null}
           </View>
-        </View>
+        ) : (
+          <View style={styles.guestCard}>
+            <MaterialIcons name="person-outline" size={48} color={colors.onPrimary} />
+            <Text style={styles.guestTitle}>Browse as guest</Text>
+            <Text style={styles.guestSub}>
+              Sign in to place orders, track deliveries, and manage your account.
+            </Text>
+            <PrimaryButton
+              label="Sign In"
+              onPress={() =>
+                promptAuth({
+                  returnTo: '/(tabs)/profile',
+                  message: 'Sign in to access your profile',
+                })
+              }
+              style={styles.guestBtn}
+            />
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/(auth)/signup' as never,
+                  params: { returnTo: '/(tabs)/profile' },
+                })
+              }>
+              <Text style={styles.guestLink}>Create account</Text>
+            </Pressable>
+          </View>
+        )}
 
         <Text style={styles.sectionLabel}>ACCOUNT MANAGEMENT</Text>
         <View style={styles.menu}>
@@ -81,7 +126,7 @@ export default function ProfileScreen() {
             <Pressable
               key={item.label}
               style={[styles.menuItem, i > 0 && styles.menuBorder]}
-              onPress={() => item.href && router.push(item.href as never)}>
+              onPress={() => handleMenuPress(item)}>
               <View style={styles.menuLeft}>
                 <View style={styles.menuIcon}>
                   <MaterialIcons name={item.icon} size={22} color={colors.primaryContainer} />
@@ -98,12 +143,14 @@ export default function ProfileScreen() {
           <Text style={styles.whatsappText}>Chat on WhatsApp</Text>
         </Pressable>
 
-        <PrimaryButton
-          label="Logout"
-          variant="outline"
-          onPress={handleLogout}
-          style={styles.logout}
-        />
+        {signedIn ? (
+          <PrimaryButton
+            label="Logout"
+            variant="outline"
+            onPress={handleLogout}
+            style={styles.logout}
+          />
+        ) : null}
         <Text style={styles.version}>App Version 1.0.0</Text>
       </ScrollView>
     </View>
@@ -124,6 +171,25 @@ const styles = StyleSheet.create({
     marginBottom: spacing.unit6,
     overflow: 'hidden',
   },
+  guestCard: {
+    alignItems: 'center',
+    backgroundColor: colors.primaryContainer,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(119, 90, 25, 0.5)',
+    padding: spacing.unit6,
+    marginBottom: spacing.unit6,
+    gap: spacing.unit2,
+  },
+  guestTitle: { ...typography.headlineMd, color: colors.onPrimary, fontWeight: '700', marginTop: spacing.unit2 },
+  guestSub: {
+    ...typography.bodyMd,
+    color: 'rgba(255,255,255,0.75)',
+    textAlign: 'center',
+    marginBottom: spacing.unit2,
+  },
+  guestBtn: { alignSelf: 'stretch', marginTop: spacing.unit2 },
+  guestLink: { ...typography.labelLg, color: brand.gold, marginTop: spacing.unit2 },
   avatar: {
     width: 80,
     height: 80,

@@ -23,6 +23,9 @@ export function mapStrapiAuthUser(user: Record<string, unknown>, phoneHint?: str
     listedAsProfessional: Boolean(user.listedAsProfessional),
     professionType: (user.professionType as AuthUser['professionType']) ?? null,
     professionalBio: (user.professionalBio as string | null) ?? null,
+    professionalWorks: Array.isArray(user.professionalWorks)
+      ? (user.professionalWorks as AuthUser['professionalWorks'])
+      : [],
     onboardingComplete: user.onboardingComplete !== false,
   };
 }

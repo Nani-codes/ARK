@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   Pressable,
@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { updateMyProfile } from '@/lib/api';
+import { routeAfterAuth } from '@/lib/authGate';
 import { PROFESSION_OPTIONS } from '@/lib/professions';
 import { colors, spacing, typography } from '@/lib/theme';
 import type { ProfessionType } from '@/lib/types';
@@ -23,6 +24,7 @@ import { useAuthStore } from '@/stores/auth';
 type Step = 'ask' | 'details';
 
 export default function ProfessionalSetupScreen() {
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const insets = useSafeAreaInsets();
   const setUser = useAuthStore((s) => s.setUser);
   const user = useAuthStore((s) => s.user);
@@ -45,7 +47,7 @@ export default function ProfessionalSetupScreen() {
         onboardingComplete: true,
       });
       await setUser(res.user);
-      router.replace('/(tabs)');
+      routeAfterAuth(res.user, returnTo);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save preference');
     } finally {
@@ -66,7 +68,7 @@ export default function ProfessionalSetupScreen() {
         onboardingComplete: true,
       });
       await setUser(res.user);
-      router.replace('/(tabs)');
+      routeAfterAuth(res.user, returnTo);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save profile');
     } finally {

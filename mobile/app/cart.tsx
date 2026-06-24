@@ -7,6 +7,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { CartQuantityControl } from '@/components/CartQuantityControl';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeader } from '@/components/SectionHeader';
+import { isSignedIn, promptAuth } from '@/lib/authGate';
 import { GST_LABEL } from '@/lib/pricing';
 import { colors, spacing, typography } from '@/lib/theme';
 import { useCartStore } from '@/stores/cart';
@@ -83,7 +84,16 @@ export default function CartScreen() {
 
         <PrimaryButton
           label="Proceed to Checkout"
-          onPress={() => router.push('/checkout')}
+          onPress={() => {
+            if (!isSignedIn()) {
+              promptAuth({
+                returnTo: '/checkout',
+                message: 'Sign in to continue with checkout',
+              });
+              return;
+            }
+            router.push('/checkout');
+          }}
           style={{ marginTop: spacing.unit4 }}
         />
       </ScrollView>

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -17,6 +17,7 @@ import { sendOtp } from '@/lib/strapi';
 import { colors, spacing, typography } from '@/lib/theme';
 
 export default function SignupScreen() {
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const insets = useSafeAreaInsets();
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,7 +32,10 @@ export default function SignupScreen() {
     setLoading(true);
     try {
       await sendOtp(phone);
-      router.push({ pathname: '/(auth)/verify', params: { phone, mode: 'signup' } });
+      router.push({
+        pathname: '/(auth)/verify' as never,
+        params: { phone, mode: 'signup', ...(returnTo ? { returnTo } : {}) },
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to send OTP');
     } finally {
@@ -69,7 +73,13 @@ export default function SignupScreen() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account? </Text>
-          <Pressable onPress={() => router.replace('/(auth)/login')}>
+          <Pressable
+            onPress={() =>
+              router.replace({
+                pathname: '/(auth)/login' as never,
+                params: returnTo ? { returnTo } : {},
+              })
+            }>
             <Text style={styles.link}>Sign in</Text>
           </Pressable>
         </View>

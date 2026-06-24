@@ -40,16 +40,6 @@ export function isWithinOperatingHours(startHour = 8, endHour = 20) {
   return hour >= startHour && hour < endHour;
 }
 
-export function estimateDeliveryAt(slot: string) {
-  const now = new Date();
-  if (slot === 'next_day') {
-    const next = new Date(now);
-    next.setDate(next.getDate() + 1);
-    next.setHours(10, 0, 0, 0);
-    return next;
-  }
-  if (slot === 'two_hour') {
-    return new Date(now.getTime() + 2 * 60 * 60 * 1000);
-  }
-  return new Date(now.getTime() + 90 * 60 * 1000);
+export function estimateDeliveryAt(from = new Date()) {
+  return new Date(from.getTime() + 90 * 60 * 1000);
 }

@@ -15,12 +15,9 @@ export default function Index() {
     );
   }
 
-  if (token) {
-    if (useAuthStore.getState().needsOnboarding()) {
-      return <Redirect href="/(auth)/professional-setup" />;
-    }
-    return <Redirect href="/(tabs)" />;
+  if (token && useAuthStore.getState().needsOnboarding()) {
+    return <Redirect href="/(auth)/professional-setup" />;
   }
 
-  return <Redirect href="/(auth)/login" />;
+  return <Redirect href="/(tabs)" />;
 }

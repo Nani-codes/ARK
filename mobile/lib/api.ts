@@ -1,3 +1,4 @@
+import { normalizeHomeBanner } from './normalizeHomeBanner';
 import { normalizeOrder } from './normalizeOrder';
 import { normalizeProduct } from './normalizeProduct';
 import { normalizeQuote } from './normalizeQuote';
@@ -6,9 +7,11 @@ import type {
   AppConfig,
   AuthUser,
   Category,
+  HomeBanner,
   Order,
   Product,
   ProfessionalProfile,
+  ProfessionalWork,
   ProfessionType,
   QuoteRequest,
   ReturnRequest,
@@ -87,6 +90,16 @@ export async function fetchAppConfig() {
   return res;
 }
 
+export async function fetchHomeBanners() {
+  const res = await strapiFetch<StrapiListResponse<HomeBanner>>(
+    '/api/home-banners?filters[active][$eq]=true&sort=sortOrder:asc&populate[image]=true'
+  );
+  const data = res.data
+    .map((row) => normalizeHomeBanner(row as Parameters<typeof normalizeHomeBanner>[0]))
+    .filter((banner): banner is HomeBanner => banner !== null);
+  return { ...res, data };
+}
+
 export async function fetchServiceablePincodes() {
   return strapiFetch<StrapiListResponse<{ pincode: string; city: string; active: boolean }>>(
     '/api/serviceable-pincodes?pagination[pageSize]=200&filters[active][$eq]=true'
@@ -97,11 +110,12 @@ export function createOrder(payload: {
   orderStatus: string;
   paymentMethod: string;
   deliveryAddress: string;
-  deliverySlot?: string;
   deliveryFee?: number;
   pincode?: string;
   gstin?: string;
   businessName?: string;
+  notifyPhone?: string;
+  installationRequired?: boolean;
   neftProofUrl?: string;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
@@ -240,6 +254,7 @@ export function updateMyProfile(payload: {
   listedAsProfessional?: boolean;
   professionType?: ProfessionType | null;
   professionalBio?: string | null;
+  professionalWorks?: ProfessionalWork[];
   displayName?: string;
   onboardingComplete?: boolean;
 }) {
@@ -260,4 +275,8 @@ export function savePushToken(expoPushToken: string) {
 
 export async function fetchProfessionals() {
   return strapiFetch<{ data: ProfessionalProfile[] }>('/api/user-profile/professionals');
+}
+
+export async function fetchProfessional(id: number) {
+  return strapiFetch<{ data: ProfessionalProfile }>(`/api/user-profile/professionals/${id}`);
 }

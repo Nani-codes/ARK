@@ -97,6 +97,10 @@
     "professionalBio": {
       "type": "text"
     },
+    "professionalWorks": {
+      "type": "json",
+      "default": []
+    },
     "onboardingComplete": {
       "type": "boolean",
       "default": false

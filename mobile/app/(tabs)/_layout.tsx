@@ -60,6 +60,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="professionals"
+        options={{
+          title: 'Pros',
+          tabBarIcon: ({ focused }) => <TabIcon name="engineering" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',

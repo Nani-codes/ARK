@@ -6,15 +6,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { isValidPassword, savePassword } from '@/lib/credentials';
+import { authParamsWithReturnTo, routeAfterAuth } from '@/lib/authGate';
 import { colors, spacing, typography } from '@/lib/theme';
 import { useAuthStore } from '@/stores/auth';
 
 type SetPasswordMode = 'create' | 'reset';
 
 export default function SetPasswordScreen() {
-  const { phone, mode = 'create' } = useLocalSearchParams<{
+  const { phone, mode = 'create', returnTo } = useLocalSearchParams<{
     phone: string;
     mode?: SetPasswordMode;
+    returnTo?: string;
   }>();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
@@ -49,14 +51,17 @@ export default function SetPasswordScreen() {
       await savePassword(phone, password);
 
       if (mode === 'reset') {
-        router.replace('/(auth)/login');
+        router.replace({
+          pathname: '/(auth)/login' as never,
+          params: authParamsWithReturnTo(returnTo),
+        });
         return;
       }
 
-      if (user?.onboardingComplete === false) {
-        router.replace('/(auth)/professional-setup');
+      if (user) {
+        routeAfterAuth(user, returnTo);
       } else {
-        router.replace('/(tabs)');
+        router.replace('/(tabs)' as never);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save password');

@@ -1,6 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -8,10 +9,10 @@ import { OrderTimeline } from '@/components/OrderTimeline';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeader } from '@/components/SectionHeader';
 import { cancelOrder, fetchOrder } from '@/lib/api';
+import { isSignedIn, promptAuth } from '@/lib/authGate';
 import { formatInr } from '@/lib/productPricing';
 import { GST_LABEL } from '@/lib/pricing';
 import {
-  DELIVERY_SLOT_LABELS,
   formatOrderDate,
   orderDisplayNumber,
   ORDER_STATUS_STYLES,
@@ -44,7 +45,34 @@ export default function OrderDetailScreen() {
 
   const order = data?.data;
 
-  if (!isHydrated || isLoading || !order) {
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!token && id) {
+      promptAuth({
+        returnTo: `/order/${id}`,
+        message: 'Sign in to view your order details',
+      });
+    }
+  }, [isHydrated, token, id]);
+
+  if (!isHydrated) {
+    return (
+      <View style={styles.container}>
+        <AppHeader showBack showCart={false} showLocation={false} />
+        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.unit12 }} />
+      </View>
+    );
+  }
+
+  if (!token) {
+    return (
+      <View style={styles.container}>
+        <AppHeader showBack showCart={false} showLocation={false} />
+      </View>
+    );
+  }
+
+  if (isLoading || !order) {
     return (
       <View style={styles.container}>
         <AppHeader showBack showCart={false} showLocation={false} />
@@ -116,11 +144,6 @@ export default function OrderDetailScreen() {
             <View>
               <Text style={styles.etaLabel}>Estimated delivery</Text>
               <Text style={styles.etaValue}>{eta}</Text>
-              {order.deliverySlot ? (
-                <Text style={styles.etaSub}>
-                  {DELIVERY_SLOT_LABELS[order.deliverySlot] ?? order.deliverySlot}
-                </Text>
-              ) : null}
             </View>
           </View>
         ) : null}
@@ -158,6 +181,16 @@ export default function OrderDetailScreen() {
               <Text style={styles.infoLabel}>PAYMENT METHOD</Text>
               <Text style={styles.infoValue}>
                 {PAYMENT_METHOD_LABELS[order.paymentMethod] ?? order.paymentMethod}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.infoDivider} />
+          <View style={styles.infoRow}>
+            <MaterialIcons name="construction" size={22} color={colors.primary} />
+            <View style={styles.infoBody}>
+              <Text style={styles.infoLabel}>INSTALLATION</Text>
+              <Text style={styles.infoValue}>
+                {order.installationRequired ? 'Required — team will contact you' : 'Not required'}
               </Text>
             </View>
           </View>
@@ -257,7 +290,6 @@ const styles = StyleSheet.create({
   },
   etaLabel: { ...typography.labelMd, color: colors.onSurfaceVariant },
   etaValue: { ...typography.labelLg, color: colors.primary, fontWeight: '700' },
-  etaSub: { ...typography.labelMd, color: colors.onSurfaceVariant, marginTop: 2 },
   sectionLabel: { ...typography.labelLg, color: colors.primary, marginTop: spacing.unit2, marginBottom: spacing.unit2 },
   line: { flexDirection: 'row', alignItems: 'center', gap: spacing.unit3, backgroundColor: colors.surfaceContainerLowest, borderRadius: 12, borderWidth: 1, borderColor: colors.outlineVariant, padding: spacing.unit4, marginBottom: spacing.unit3 },
   lineIcon: { width: 44, height: 44, borderRadius: 8, backgroundColor: colors.surfaceContainer, alignItems: 'center', justifyContent: 'center' },

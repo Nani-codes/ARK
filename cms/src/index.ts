@@ -12,8 +12,11 @@ const PUBLIC_ACTIONS = [
   { controller: 'product', action: 'find' },
   { controller: 'product', action: 'findOne' },
   { controller: 'app-config', action: 'find' },
+  { controller: 'home-banner', action: 'find' },
+  { controller: 'home-banner', action: 'findOne' },
   { controller: 'serviceable-pincode', action: 'find' },
   { controller: 'user-profile', action: 'listProfessionals' },
+  { controller: 'user-profile', action: 'getProfessional' },
 ];
 
 const AUTH_ACTIONS = [
@@ -91,6 +94,8 @@ async function enablePermissions(strapi: Core.Strapi) {
       authRole.id
     );
   }
+
+  await ensurePermission(strapi, 'plugin::upload.content-api.upload', authRole.id);
 }
 
 async function seedAppConfig(strapi: Core.Strapi) {
@@ -100,7 +105,7 @@ async function seedAppConfig(strapi: Core.Strapi) {
   await strapi.documents('api::app-config.app-config').create({
     data: {
       promoTitle: 'Free delivery on orders above ₹2,999',
-      promoSubtitle: 'Hyderabad · 60–120 min delivery slots',
+      promoSubtitle: 'Hyderabad · 60–90 min delivery',
       promoCtaLabel: 'Shop Deals',
       promoCtaLink: '/search?q=cement',
       whatsappNumber: '919876543210',

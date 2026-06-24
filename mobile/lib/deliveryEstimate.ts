@@ -1,16 +1,5 @@
-import type { DeliverySlot } from '@/lib/types';
-
 /** Mirror of cms/src/api/order/utils/pricing.ts estimateDeliveryAt */
-export function estimateDeliveryAt(slot: DeliverySlot, from = new Date()): Date {
-  if (slot === 'next_day') {
-    const next = new Date(from);
-    next.setDate(next.getDate() + 1);
-    next.setHours(10, 0, 0, 0);
-    return next;
-  }
-  if (slot === 'two_hour') {
-    return new Date(from.getTime() + 2 * 60 * 60 * 1000);
-  }
+export function estimateDeliveryAt(from = new Date()): Date {
   return new Date(from.getTime() + 90 * 60 * 1000);
 }
 
@@ -26,11 +15,7 @@ export function formatDeliveryEta(date: Date): string {
   });
 }
 
-export function slotEtaSummary(slot: DeliverySlot): string {
-  if (slot === 'next_day') return 'Tomorrow by 10:00 AM';
-  if (slot === 'two_hour') return 'Within 2 hours';
-  return '60–90 minutes';
-}
+export const STANDARD_DELIVERY_ETA = '60–90 minutes';
 
 export function orderSuccessEtaMessage(estimatedDeliveryAt?: string | null): string {
   if (!estimatedDeliveryAt) {

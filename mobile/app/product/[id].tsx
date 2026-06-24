@@ -22,7 +22,8 @@ import { ProductPriceBlock } from '@/components/ProductPriceBlock';
 import { TemperatureBadge } from '@/components/TemperatureBadge';
 import { VariantPicker } from '@/components/VariantPicker';
 import { fetchProduct } from '@/lib/api';
-import { slotEtaSummary } from '@/lib/deliveryEstimate';
+import { isSignedIn, promptAuth } from '@/lib/authGate';
+import { STANDARD_DELIVERY_ETA } from '@/lib/deliveryEstimate';
 import {
   formatInr,
   getEffectivePricingTiers,
@@ -105,7 +106,15 @@ export default function ProductDetailScreen() {
     const checkoutQty = cartQty > 0 ? cartQty : 1;
     const item = buildCartLine(product, selectedVariant, checkoutQty);
     const itemsParam = encodeURIComponent(JSON.stringify([item]));
-    router.push(`/checkout?buyNow=true&buyNowItems=${itemsParam}`);
+    const returnTo = `/checkout?buyNow=true&buyNowItems=${itemsParam}`;
+    if (!isSignedIn()) {
+      promptAuth({
+        returnTo,
+        message: 'Sign in to continue with checkout',
+      });
+      return;
+    }
+    router.push(returnTo as never);
   };
 
   return (
@@ -153,7 +162,7 @@ export default function ProductDetailScreen() {
           ) : null}
           <View style={styles.deliveryEtaRow}>
             <MaterialIcons name="local-shipping" size={16} color={colors.primary} />
-            <Text style={styles.deliveryEtaText}>Standard delivery: {slotEtaSummary('asap')}</Text>
+            <Text style={styles.deliveryEtaText}>Standard delivery: {STANDARD_DELIVERY_ETA}</Text>
           </View>
           {product.temperatureSensitive ? (
             <TemperatureBadge note={product.temperatureNote} compact />

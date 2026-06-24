@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -10,7 +10,8 @@ import { DeliverySelectorModal } from '@/components/DeliverySelectorModal';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeader } from '@/components/SectionHeader';
 import { TemperatureBadge } from '@/components/TemperatureBadge';
-import { createOrder, fetchAppConfig } from '@/lib/api';
+import { createOrder } from '@/lib/api';
+import { isSignedIn, promptAuth } from '@/lib/authGate';
 import { formatFullAddress } from '@/lib/addressFormat';
 import { NEFT_BANK_DETAILS } from '@/lib/orderDisplay';
 import {
@@ -21,13 +22,11 @@ import {
   COD_MAX_TOTAL,
   deliveryFeeLabel,
   GST_LABEL,
-  isWithinOperatingHours,
 } from '@/lib/pricing';
 import { estimateDeliveryAt, formatDeliveryEta } from '@/lib/deliveryEstimate';
 import { processOnlinePayment } from '@/lib/razorpay';
 import { isPincodeServiceable, loadServiceablePincodes } from '@/lib/serviceability';
 import { colors, spacing, typography } from '@/lib/theme';
-import type { DeliverySlot } from '@/lib/types';
 import { useAddressStore } from '@/stores/addresses';
 import { useAuthStore } from '@/stores/auth';
 import type { CartLine } from '@/stores/cart';
@@ -36,12 +35,6 @@ import { useGstStore } from '@/stores/gst';
 import { usePaymentsStore } from '@/stores/payments';
 
 type PaymentMethod = 'neft' | 'cod' | 'online';
-
-const SLOT_OPTIONS: { key: DeliverySlot; label: string; sub: string }[] = [
-  { key: 'asap', label: 'ASAP', sub: '60–90 min target' },
-  { key: 'two_hour', label: '2-Hour Slot', sub: 'Scheduled window' },
-  { key: 'next_day', label: 'Next Day', sub: 'Morning delivery' },
-];
 
 export default function CheckoutScreen() {
   const { buyNow, buyNowItems: buyNowItemsRaw } = useLocalSearchParams<{
@@ -85,46 +78,15 @@ export default function CheckoutScreen() {
   const setNeftReference = usePaymentsStore((s) => s.setNeftReference);
 
   const [payment, setPayment] = useState<PaymentMethod>('online');
-  const [deliverySlot, setDeliverySlot] = useState<DeliverySlot>('asap');
-  const [showSlotPicker, setShowSlotPicker] = useState(false);
   const [selectorVisible, setSelectorVisible] = useState(false);
   const [isServiceable, setIsServiceable] = useState<boolean | null>(null);
+  const [useAlternateNotify, setUseAlternateNotify] = useState(false);
+  const [notifyPhone, setNotifyPhone] = useState('');
+  const [installationRequired, setInstallationRequired] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: appConfigRes } = useQuery({
-    queryKey: ['app-config'],
-    queryFn: fetchAppConfig,
-  });
-  const appConfig = appConfigRes?.data;
-  const operatingStart = appConfig?.operatingHoursStart ?? 8;
-  const operatingEnd = appConfig?.operatingHoursEnd ?? 20;
-  const withinHours = isWithinOperatingHours(operatingStart, operatingEnd);
-
-  const etaPreview = useMemo(
-    () => formatDeliveryEta(estimateDeliveryAt(deliverySlot)),
-    [deliverySlot]
-  );
+  const etaPreview = useMemo(() => formatDeliveryEta(estimateDeliveryAt()), []);
   const hasTemperatureItems = items.some((item) => item.temperatureSensitive);
-
-  const slotOptions = useMemo(
-    () =>
-      SLOT_OPTIONS.map((slot) => ({
-        ...slot,
-        disabled:
-          !withinHours && (slot.key === 'asap' || slot.key === 'two_hour'),
-        sub:
-          !withinHours && (slot.key === 'asap' || slot.key === 'two_hour')
-            ? `Available ${operatingStart}:00–${operatingEnd}:00 IST`
-            : slot.sub,
-      })),
-    [withinHours, operatingStart, operatingEnd]
-  );
-
-  useEffect(() => {
-    if (!withinHours && (deliverySlot === 'asap' || deliverySlot === 'two_hour')) {
-      setDeliverySlot('next_day');
-    }
-  }, [withinHours, deliverySlot]);
 
   const slotsDisabled = isServiceable === false;
 
@@ -180,11 +142,13 @@ export default function CheckoutScreen() {
         orderStatus: 'pending',
         paymentMethod: payment,
         deliveryAddress: selectedAddress ? formatFullAddress(selectedAddress) : '',
-        deliverySlot,
         deliveryFee,
         pincode: selectedAddress?.pincode,
         gstin: gstin || undefined,
         businessName: businessName || undefined,
+        notifyPhone:
+          useAlternateNotify && notifyPhone.length === 10 ? notifyPhone : undefined,
+        installationRequired,
         neftProofUrl: payment === 'neft' && neftReference ? neftReference : undefined,
         razorpayOrderId,
         razorpayPaymentId,
@@ -212,13 +176,26 @@ export default function CheckoutScreen() {
         params: {
           orderNumber: res.data.orderNumber,
           estimatedDeliveryAt:
-            res.data.estimatedDeliveryAt ?? estimateDeliveryAt(deliverySlot).toISOString(),
+            res.data.estimatedDeliveryAt ?? estimateDeliveryAt().toISOString(),
         },
       });
     },
   });
 
   const handlePlaceOrder = async () => {
+    const checkoutReturnTo =
+      buyNow === 'true' && buyNowItemsRaw
+        ? `/checkout?buyNow=true&buyNowItems=${encodeURIComponent(buyNowItemsRaw)}`
+        : '/checkout';
+
+    if (!isSignedIn()) {
+      promptAuth({
+        returnTo: checkoutReturnTo,
+        message: 'Sign in to place your order',
+      });
+      return;
+    }
+
     if (!selectedAddress) return;
 
     const serviceable = await isPincodeServiceable(selectedAddress.pincode);
@@ -232,6 +209,11 @@ export default function CheckoutScreen() {
         'COD unavailable',
         `Cash on Delivery is only available for orders up to ₹${COD_MAX_TOTAL.toLocaleString('en-IN')}.`
       );
+      return;
+    }
+
+    if (useAlternateNotify && notifyPhone.length !== 10) {
+      Alert.alert('Invalid number', 'Enter a valid 10-digit WhatsApp number for order updates.');
       return;
     }
 
@@ -296,62 +278,87 @@ export default function CheckoutScreen() {
           </View>
         ) : null}
 
-        <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>DELIVERY SLOT (OPTIONAL)</Text>
         {!slotsDisabled ? (
           <View style={styles.etaBanner}>
             <MaterialIcons name="schedule" size={18} color={colors.primary} />
             <Text style={styles.etaBannerText}>Estimated arrival: {etaPreview}</Text>
           </View>
         ) : null}
-        <Pressable
-          style={[styles.slotSummary, slotsDisabled && styles.payOptionDisabled]}
-          onPress={() => !slotsDisabled && setShowSlotPicker((v) => !v)}
-          disabled={slotsDisabled}>
-          <View style={styles.slotSummaryText}>
-            <Text style={[styles.slotSummaryTitle, slotsDisabled && styles.payTitleDisabled]}>
-              {slotOptions.find((s) => s.key === deliverySlot)?.label ?? 'ASAP'}
+
+        <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>INSTALLATION</Text>
+        <Text style={styles.installHint}>Do you need on-site installation for this order?</Text>
+        <View style={styles.installRow}>
+          <Pressable
+            style={[
+              styles.installOption,
+              !installationRequired && styles.installOptionActive,
+              slotsDisabled && styles.payOptionDisabled,
+            ]}
+            onPress={() => !slotsDisabled && setInstallationRequired(false)}
+            disabled={slotsDisabled}>
+            <View style={styles.radio}>
+              {!installationRequired && !slotsDisabled ? <View style={styles.radioDot} /> : null}
+            </View>
+            <Text style={[styles.installOptionText, slotsDisabled && styles.payTitleDisabled]}>
+              No, delivery only
             </Text>
-            <Text style={styles.slotSummarySub}>
-              {slotsDisabled
-                ? 'Delivery options unavailable'
-                : showSlotPicker
-                  ? 'Tap to collapse'
-                  : slotOptions.find((s) => s.key === deliverySlot)?.sub ?? 'Fastest available'}
+          </Pressable>
+          <Pressable
+            style={[
+              styles.installOption,
+              installationRequired && styles.installOptionActive,
+              slotsDisabled && styles.payOptionDisabled,
+            ]}
+            onPress={() => !slotsDisabled && setInstallationRequired(true)}
+            disabled={slotsDisabled}>
+            <View style={styles.radio}>
+              {installationRequired && !slotsDisabled ? <View style={styles.radioDot} /> : null}
+            </View>
+            <Text style={[styles.installOptionText, slotsDisabled && styles.payTitleDisabled]}>
+              Yes, installation required
             </Text>
-          </View>
-          <MaterialIcons
-            name={showSlotPicker ? 'expand-less' : 'expand-more'}
-            size={24}
-            color={slotsDisabled ? colors.iconMuted : colors.iconMuted}
-          />
-        </Pressable>
-        {showSlotPicker && !slotsDisabled ? (
-          <>
-            {slotOptions.map((slot) => (
-              <Pressable
-                key={slot.key}
-                style={[
-                  styles.payOption,
-                  deliverySlot === slot.key && styles.payOptionActive,
-                  slot.disabled && styles.payOptionDisabled,
-                ]}
-                onPress={() => !slot.disabled && setDeliverySlot(slot.key)}
-                disabled={slot.disabled}>
-                <View style={styles.radio}>
-                  {deliverySlot === slot.key ? <View style={styles.radioDot} /> : null}
-                </View>
-                <View style={styles.payText}>
-                  <Text style={styles.payTitle}>{slot.label}</Text>
-                  <Text style={styles.paySub}>{slot.sub}</Text>
-                </View>
-              </Pressable>
-            ))}
-          </>
-        ) : !slotsDisabled ? (
-          <Text style={styles.slotHint}>
-            Leave as ASAP for fastest delivery — expand only if you need a specific window.
+          </Pressable>
+        </View>
+
+        <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>ORDER UPDATES (WHATSAPP)</Text>
+        <View style={styles.notifyCard}>
+          <Text style={styles.notifyDefault}>
+            {user?.phone
+              ? `Default: +91 ${user.phone} (your account)`
+              : 'Default: your account WhatsApp number'}
           </Text>
-        ) : null}
+          <Pressable
+            style={styles.notifyToggle}
+            onPress={() => {
+              setUseAlternateNotify((v) => !v);
+              if (useAlternateNotify) setNotifyPhone('');
+            }}>
+            <View style={[styles.checkbox, useAlternateNotify && styles.checkboxChecked]}>
+              {useAlternateNotify ? (
+                <MaterialIcons name="check" size={16} color={colors.onSecondary} />
+              ) : null}
+            </View>
+            <Text style={styles.notifyToggleText}>Send updates to someone else</Text>
+          </Pressable>
+          {useAlternateNotify ? (
+            <View style={styles.notifyPhoneRow}>
+              <View style={styles.notifyPrefix}>
+                <Text style={styles.notifyPrefixText}>+91</Text>
+              </View>
+              <TextInput
+                style={styles.notifyInput}
+                placeholder="Site supervisor / recipient mobile"
+                keyboardType="number-pad"
+                maxLength={10}
+                value={notifyPhone}
+                onChangeText={(t) => setNotifyPhone(t.replace(/\D/g, ''))}
+              />
+            </View>
+          ) : null}
+          <Text style={styles.notifyHint}>
+            Order placed, delivery, and status WhatsApp messages go to this number when set.
+          </Text>
+        </View>
 
         <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>SELECT PAYMENT METHOD</Text>
 
@@ -531,20 +538,6 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.containerMargin, paddingBottom: spacing.unit12, gap: spacing.unit3 },
   sectionLabel: { ...typography.labelLg, color: colors.primary, textTransform: 'uppercase', marginBottom: spacing.unit2 },
   sectionLabelSpaced: { marginTop: spacing.unit4 },
-  slotSummary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.unit3,
-    padding: spacing.unit4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.outlineVariant,
-    backgroundColor: colors.surface,
-  },
-  slotSummaryText: { flex: 1 },
-  slotSummaryTitle: { ...typography.labelLg, color: colors.primary },
-  slotSummarySub: { ...typography.bodyMd, color: colors.onSurfaceVariant, marginTop: 2 },
-  slotHint: { ...typography.bodyMd, color: colors.onSurfaceVariant, marginTop: spacing.unit2 },
   etaBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -625,4 +618,70 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontWeight: '700',
   },
+  notifyCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    padding: spacing.unit4,
+    gap: spacing.unit3,
+  },
+  notifyDefault: { ...typography.bodyMd, color: colors.onSurfaceVariant },
+  notifyToggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.unit3 },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: colors.secondary,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: colors.secondary,
+  },
+  notifyToggleText: { ...typography.labelLg, color: colors.primary, flex: 1 },
+  notifyPhoneRow: { flexDirection: 'row', gap: spacing.unit2 },
+  notifyPrefix: {
+    height: 48,
+    width: 64,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceContainerLow,
+  },
+  notifyPrefixText: { ...typography.bodyMd, color: colors.onSurface },
+  notifyInput: {
+    flex: 1,
+    height: 48,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    borderRadius: 8,
+    paddingHorizontal: spacing.unit3,
+    backgroundColor: colors.surfaceContainerLow,
+    ...typography.bodyMd,
+    color: colors.onSurface,
+  },
+  notifyHint: { ...typography.bodyMd, color: colors.onSurfaceVariant, fontSize: 12 },
+  installHint: {
+    ...typography.bodyMd,
+    color: colors.onSurfaceVariant,
+    marginBottom: spacing.unit3,
+  },
+  installRow: { gap: spacing.unit2 },
+  installOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.unit3,
+    padding: spacing.unit4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    backgroundColor: colors.surface,
+  },
+  installOptionActive: { borderWidth: 2, borderColor: colors.secondary },
+  installOptionText: { ...typography.labelLg, color: colors.primary, flex: 1 },
 });

@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { getProductVariants } from '@/lib/productPricing';
+import { isSignedIn, promptAuth } from '@/lib/authGate';
 import { colors, spacing, typography } from '@/lib/theme';
 import type { Product, ProductVariant } from '@/lib/types';
 import { buildCartLine, cartLineId, useCartStore } from '@/stores/cart';
@@ -64,7 +65,15 @@ export function AddToCartControl({
     const checkoutQty = quantity > 0 ? quantity : 1;
     const item = buildCartLine(product, variant, checkoutQty);
     const itemsParam = encodeURIComponent(JSON.stringify([item]));
-    router.push(`/checkout?buyNow=true&buyNowItems=${itemsParam}`);
+    const returnTo = `/checkout?buyNow=true&buyNowItems=${itemsParam}`;
+    if (!isSignedIn()) {
+      promptAuth({
+        returnTo,
+        message: 'Sign in to continue with checkout',
+      });
+      return;
+    }
+    router.push(returnTo as never);
   };
 
   const isMd = size === 'md';

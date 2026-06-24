@@ -1,18 +1,36 @@
 import { useMutation } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { createReturnRequest } from '@/lib/api';
+import { isSignedIn, promptAuth } from '@/lib/authGate';
 import { colors, spacing, typography } from '@/lib/theme';
+import { useAuthStore } from '@/stores/auth';
 
 export default function ReturnRequestScreen() {
   const { orderNumber, productName } = useLocalSearchParams<{
     orderNumber?: string;
     productName?: string;
   }>();
+  const isHydrated = useAuthStore((s) => s.isHydrated);
+  const token = useAuthStore((s) => s.token);
+
+  const returnPath = orderNumber
+    ? `/returns/request?orderNumber=${encodeURIComponent(orderNumber)}${productName ? `&productName=${encodeURIComponent(productName)}` : ''}`
+    : '/returns/request';
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (!token) {
+      promptAuth({
+        returnTo: returnPath,
+        message: 'Sign in to submit a return request',
+      });
+    }
+  }, [isHydrated, token, returnPath]);
 
   const [reason, setReason] = useState('');
   const [product, setProduct] = useState(productName ?? '');
@@ -32,6 +50,14 @@ export default function ReturnRequestScreen() {
   });
 
   const handleSubmit = () => {
+    if (!isSignedIn()) {
+      promptAuth({
+        returnTo: returnPath,
+        message: 'Sign in to submit a return request',
+      });
+      return;
+    }
+
     if (!orderNumber || !product.trim() || reason.trim().length < 10) {
       Alert.alert('Missing details', 'Please describe the issue (min 10 characters).');
       return;

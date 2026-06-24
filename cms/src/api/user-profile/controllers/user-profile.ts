@@ -1,4 +1,6 @@
 import { mapAuthUser } from '../../../lib/mapAuthUser';
+import { mapProfessionalProfile } from '../../../lib/mapProfessional';
+import { normalizeProfessionalWorks } from '../../../lib/professional-works';
 import { resolveAuthUser } from '../../../lib/resolveAuthUser';
 
 export default {
@@ -27,10 +29,14 @@ export default {
     if (body.professionalBio !== undefined) data.professionalBio = body.professionalBio;
     if (body.displayName !== undefined) data.displayName = body.displayName;
     if (typeof body.expoPushToken === 'string') data.expoPushToken = body.expoPushToken;
+    if (body.professionalWorks !== undefined) {
+      data.professionalWorks = normalizeProfessionalWorks(body.professionalWorks);
+    }
 
     if (body.isProfessional === false) {
       data.listedAsProfessional = false;
       data.professionType = null;
+      data.professionalWorks = [];
     }
 
     if (body.isProfessional === true && body.onboardingComplete && !body.professionType) {
@@ -73,17 +79,29 @@ export default {
     });
 
     ctx.send({
-      data: professionals.map((u) => {
-        const mapped = mapAuthUser(u);
-        return {
-          id: mapped.id,
-          displayName: mapped.displayName,
-          contractorId: mapped.contractorId,
-          phone: mapped.phone,
-          professionType: mapped.professionType,
-          professionalBio: mapped.professionalBio,
-        };
-      }),
+      data: professionals.map((u) => mapProfessionalProfile(u)),
     });
+  },
+
+  async getProfessional(ctx) {
+    const id = Number(ctx.params.id);
+    if (!Number.isFinite(id)) {
+      return ctx.badRequest('Invalid professional id');
+    }
+
+    const user = await strapi.db.query('plugin::users-permissions.user').findOne({
+      where: {
+        id,
+        isProfessional: true,
+        listedAsProfessional: true,
+        professionType: { $notNull: true },
+      },
+    });
+
+    if (!user) {
+      return ctx.notFound('Professional not found');
+    }
+
+    ctx.send({ data: mapProfessionalProfile(user) });
   },
 };

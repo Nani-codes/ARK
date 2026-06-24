@@ -15,6 +15,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { createQuoteRequest, fetchProducts } from '@/lib/api';
 import { formatFullAddress } from '@/lib/addressFormat';
+import { isSignedIn, promptAuth } from '@/lib/authGate';
 import { colors, spacing, typography } from '@/lib/theme';
 import type { Product } from '@/lib/types';
 import { useAddressStore } from '@/stores/addresses';
@@ -91,6 +92,14 @@ export default function QuoteScreen() {
   });
 
   const handleSubmit = () => {
+    if (!isSignedIn()) {
+      promptAuth({
+        returnTo: '/quote',
+        message: 'Sign in to submit a bulk quote request',
+      });
+      return;
+    }
+
     if (!selectedProduct) {
       Alert.alert('Select product', 'Choose a product for your bulk quote.');
       return;

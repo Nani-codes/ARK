@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { hasPassword } from '@/lib/credentials';
+import { authParamsWithReturnTo, routeAfterAuth } from '@/lib/authGate';
 import { sendOtp } from '@/lib/strapi';
 import { colors, spacing, typography } from '@/lib/theme';
 import { useAuthStore } from '@/stores/auth';
@@ -17,25 +18,30 @@ function routeAfterVerify(
   phone: string,
   mode: VerifyMode | undefined,
   user: AuthUser,
-  needsSetPassword: boolean
+  needsSetPassword: boolean,
+  returnTo?: string
 ) {
   if (mode === 'reset' || needsSetPassword) {
     router.replace({
       pathname: '/(auth)/set-password' as never,
-      params: { phone, mode: mode === 'reset' ? 'reset' : 'create' },
+      params: {
+        phone,
+        mode: mode === 'reset' ? 'reset' : 'create',
+        ...authParamsWithReturnTo(returnTo),
+      },
     });
     return;
   }
 
-  if (user.onboardingComplete === false) {
-    router.replace('/(auth)/professional-setup');
-  } else {
-    router.replace('/(tabs)');
-  }
+  routeAfterAuth(user, returnTo);
 }
 
 export default function VerifyScreen() {
-  const { phone, mode } = useLocalSearchParams<{ phone: string; mode?: VerifyMode }>();
+  const { phone, mode, returnTo } = useLocalSearchParams<{
+    phone: string;
+    mode?: VerifyMode;
+    returnTo?: string;
+  }>();
   const insets = useSafeAreaInsets();
   const login = useAuthStore((s) => s.login);
   const [otp, setOtp] = useState('');
@@ -59,7 +65,7 @@ export default function VerifyScreen() {
       const user = await login(phone, otp);
       const needsSetPassword =
         mode === 'signup' || mode === 'reset' || !(await hasPassword(phone));
-      routeAfterVerify(phone, mode, user, needsSetPassword);
+      routeAfterVerify(phone, mode, user, needsSetPassword, returnTo);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Verification failed');
     } finally {

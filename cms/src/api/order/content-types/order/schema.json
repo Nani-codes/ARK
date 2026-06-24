@@ -47,11 +47,6 @@
       "type": "decimal",
       "default": 0
     },
-    "deliverySlot": {
-      "type": "enumeration",
-      "enum": ["asap", "two_hour", "next_day"],
-      "default": "asap"
-    },
     "estimatedDeliveryAt": {
       "type": "datetime"
     },
@@ -69,6 +64,13 @@
     },
     "assignedTo": {
       "type": "string"
+    },
+    "notifyPhone": {
+      "type": "string"
+    },
+    "installationRequired": {
+      "type": "boolean",
+      "default": false
     },
     "deliveryAddress": {
       "type": "text",

@@ -1,3 +1,5 @@
+import { mapProfessionalProfile, normalizeProfessionalWorks } from './mapProfessional';
+
 export function mapAuthUser(user: Record<string, unknown>, phone?: string) {
   const resolvedPhone =
     (user.phone as string) ?? phone ?? (user.username as string)?.replace('user_', '');
@@ -17,6 +19,7 @@ export function mapAuthUser(user: Record<string, unknown>, phone?: string) {
     listedAsProfessional: Boolean(user.listedAsProfessional),
     professionType: (user.professionType as string) ?? null,
     professionalBio: (user.professionalBio as string) ?? null,
+    professionalWorks: normalizeProfessionalWorks(user.professionalWorks),
     /** Only explicit `false` means onboarding pending; null/undefined = legacy user, skip prompt. */
     onboardingComplete: user.onboardingComplete !== false,
   };

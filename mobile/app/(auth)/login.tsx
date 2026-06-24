@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -15,19 +15,15 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { Logo } from '@/components/Logo';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { getLastPhone, SessionExpiredError } from '@/lib/credentials';
+import { routeAfterAuth } from '@/lib/authGate';
 import { colors, spacing, typography } from '@/lib/theme';
 import { useAuthStore } from '@/stores/auth';
-import type { AuthUser } from '@/lib/types';
-
-function routeAfterLogin(user: AuthUser) {
-  if (user.onboardingComplete === false) {
-    router.replace('/(auth)/professional-setup');
-  } else {
-    router.replace('/(tabs)');
-  }
-}
 
 export default function LoginScreen() {
+  const { returnTo, message } = useLocalSearchParams<{
+    returnTo?: string;
+    message?: string;
+  }>();
   const insets = useSafeAreaInsets();
   const loginWithPassword = useAuthStore((s) => s.loginWithPassword);
   const [phone, setPhone] = useState('');
@@ -54,7 +50,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const user = await loginWithPassword(phone, password);
-      routeAfterLogin(user);
+      routeAfterAuth(user, returnTo);
     } catch (e) {
       if (e instanceof SessionExpiredError) {
         setError(
@@ -80,7 +76,9 @@ export default function LoginScreen() {
 
         <View style={styles.form}>
           <Text style={styles.heading}>Welcome back</Text>
-          <Text style={styles.sub}>Sign in with your phone and password</Text>
+          <Text style={styles.sub}>
+            {message ?? 'Sign in with your phone and password'}
+          </Text>
 
           <Text style={styles.label}>Phone Number</Text>
           <View style={styles.phoneRow}>
@@ -117,7 +115,13 @@ export default function LoginScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>New to ARK? </Text>
-            <Pressable onPress={() => router.push('/(auth)/signup' as never)}>
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/(auth)/signup' as never,
+                  params: returnTo ? { returnTo } : {},
+                })
+              }>
               <Text style={styles.link}>Create account</Text>
             </Pressable>
           </View>

@@ -41,8 +41,7 @@ export default factories.createCoreController('api::order.order', ({ strapi }) =
 
     const now = new Date();
     data.cancelUntil = new Date(now.getTime() + CANCEL_WINDOW_MS).toISOString();
-    const slot = (data.deliverySlot as string) ?? 'asap';
-    data.estimatedDeliveryAt = estimateDeliveryAt(slot).toISOString();
+    data.estimatedDeliveryAt = estimateDeliveryAt(now).toISOString();
 
     if (data.paymentMethod === 'online') {
       data.paymentStatus = data.razorpayPaymentId ? 'paid' : 'pending';

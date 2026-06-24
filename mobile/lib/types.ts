@@ -82,7 +82,6 @@ export type OrderItem = {
   lineTotal: number;
 };
 
-export type DeliverySlot = 'asap' | 'two_hour' | 'next_day';
 
 export type Order = {
   id: number;
@@ -93,12 +92,13 @@ export type Order = {
   paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded';
   deliveryAddress: string;
   deliveryFee?: number;
-  deliverySlot?: DeliverySlot;
   estimatedDeliveryAt?: string;
   cancelUntil?: string;
   pincode?: string;
   gstin?: string;
   businessName?: string;
+  notifyPhone?: string;
+  installationRequired?: boolean;
   items: OrderItem[];
   subtotal: number;
   taxes: number;
@@ -133,6 +133,13 @@ export type ProfessionType =
   | 'painter'
   | 'other';
 
+export type ProfessionalWork = {
+  id: string;
+  title: string;
+  description?: string;
+  imageUrl?: string;
+};
+
 export type AuthUser = {
   id: number;
   username?: string;
@@ -144,6 +151,7 @@ export type AuthUser = {
   listedAsProfessional?: boolean;
   professionType?: ProfessionType | null;
   professionalBio?: string | null;
+  professionalWorks?: ProfessionalWork[];
   onboardingComplete?: boolean;
 };
 
@@ -154,6 +162,9 @@ export type ProfessionalProfile = {
   phone?: string;
   professionType: ProfessionType;
   professionalBio?: string | null;
+  professionalWorks?: ProfessionalWork[];
+  workCount?: number;
+  coverImageUrl?: string;
 };
 
 export type StrapiListResponse<T> = {
@@ -195,6 +206,16 @@ export type AppConfig = {
   operatingHoursStart?: number;
   operatingHoursEnd?: number;
   faqs?: Array<{ q: string; a: string }>;
+};
+
+export type HomeBanner = {
+  id: number;
+  documentId: string;
+  title: string;
+  imageUrl: string;
+  link?: string;
+  sortOrder: number;
+  active: boolean;
 };
 
 export type ReturnRequest = {

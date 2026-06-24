@@ -36,12 +36,6 @@ export const PAYMENT_METHOD_LABELS: Record<Order['paymentMethod'], string> = {
   online: 'Pay Online (UPI / Cards)',
 };
 
-export const DELIVERY_SLOT_LABELS: Record<NonNullable<Order['deliverySlot']>, string> = {
-  asap: 'ASAP (60–90 min)',
-  two_hour: '2-Hour Slot',
-  next_day: 'Next Day Morning',
-};
-
 export function formatOrderDate(createdAt: string, withTime = false) {
   return new Date(createdAt).toLocaleString('en-IN', {
     month: 'short',

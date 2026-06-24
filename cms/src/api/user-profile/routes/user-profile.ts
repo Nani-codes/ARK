@@ -36,5 +36,11 @@ export default {
       handler: 'user-profile.listProfessionals',
       config: { auth: false, policies: [], middlewares: [] },
     },
+    {
+      method: 'GET',
+      path: '/user-profile/professionals/:id',
+      handler: 'user-profile.getProfessional',
+      config: { auth: false, policies: [], middlewares: [] },
+    },
   ],
 };
