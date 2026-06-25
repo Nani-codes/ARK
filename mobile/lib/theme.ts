@@ -1,9 +1,11 @@
-/** ARK design system — navy + gold (new theme) */
+/** ARK design system — navy + gold */
 export const brand = {
   navy: '#002147',
   navyDeep: '#000a1e',
-  gold: '#775a19',
+  gold: '#ffb800',
+  goldDark: '#775a19',
   goldContainer: '#fed488',
+  /** @deprecated Use brand.gold */
   goldBright: '#ffb800',
 };
 
@@ -17,8 +19,8 @@ export const colors = {
 
   secondary: brand.gold,
   secondaryContainer: brand.goldContainer,
-  onSecondary: '#ffffff',
-  onSecondaryContainer: '#785a1a',
+  onSecondary: brand.navyDeep,
+  onSecondaryContainer: brand.goldDark,
   onSecondaryFixed: '#261900',
 
   tertiary: '#090b0c',

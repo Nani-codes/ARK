@@ -4,7 +4,7 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'rea
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
-import { colors, spacing, typography } from '@/lib/theme';
+import { brand, colors, spacing, typography } from '@/lib/theme';
 import { useRazorpayCheckoutStore } from '@/stores/razorpayCheckout';
 
 function buildCheckoutHtml(params: {
@@ -50,7 +50,7 @@ function buildCheckoutHtml(params: {
           contact: ${JSON.stringify(contact)},
           email: ${JSON.stringify(email)},
         },
-        theme: { color: '#1B3A6B' },
+        theme: { color: ${JSON.stringify(brand.navy)} },
         handler: function (response) {
           post({ type: 'success', data: response });
         },

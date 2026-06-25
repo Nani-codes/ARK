@@ -13,8 +13,10 @@
 
 From `mobile/lib/theme.ts`:
 
-- **Navy** `#002147` / `#000a1e` — primary brand, headers
-- **Gold** `#775a19` / `#ffb800` — CTAs, accents
+- **Navy** `#002147` / `#000a1e` — primary brand, headers, primary text, Buy Now buttons
+- **Gold** `#ffb800` (`brand.gold`, `colors.secondary`) — CTAs, active tab icons, links, accent borders
+- **Gold dark** `#775a19` (`brand.goldDark`) — text on light gold surfaces (chip labels, badges), not primary accents
+- **Gold container** `#fed488` — chip/badge backgrounds
 - **Background** `#f9f9fc` — app canvas
 
 ## Logo component

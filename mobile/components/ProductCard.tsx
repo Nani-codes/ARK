@@ -1,9 +1,8 @@
-import { MaterialIcons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AddToCartControl } from '@/components/AddToCartControl';
+import { ProductImage } from '@/components/ProductImage';
 import { discountPercent, formatInr, getProductDisplayPricing } from '@/lib/productPricing';
 import { mediaUrl } from '@/lib/strapi';
 import { colors, spacing, typography } from '@/lib/theme';
@@ -28,18 +27,7 @@ export function ProductCard({ product, compact }: ProductCardProps) {
       style={[styles.card, compact && styles.cardCompact]}
       onPress={() => router.push(`/product/${product.documentId}`)}>
       <View style={styles.imageWrap}>
-        {uri ? (
-          <Image
-            source={{ uri }}
-            style={styles.image}
-            contentFit="contain"
-            contentPosition="center"
-          />
-        ) : (
-          <View style={styles.placeholder}>
-            <MaterialIcons name="inventory-2" size={32} color={colors.icon} />
-          </View>
-        )}
+        <ProductImage uri={uri} accessibilityLabel={product.name} iconSize={32} style={styles.image} />
         {product.onDeal ? (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>DEAL</Text>
@@ -84,13 +72,15 @@ const styles = StyleSheet.create({
   cardCompact: { width: '100%' },
   imageWrap: {
     height: 128,
+    width: '100%',
     backgroundColor: colors.surfaceContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
     overflow: 'hidden',
+    position: 'relative',
   },
-  image: { width: '100%', height: '100%' },
-  placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  image: {
+    height: '100%',
+    paddingHorizontal: spacing.unit3,
+  },
   badge: {
     position: 'absolute',
     top: 8,

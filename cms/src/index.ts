@@ -2,6 +2,7 @@ import type { Core } from '@strapi/strapi';
 
 import { migrateStatusColumns } from './bootstrap/migrate-status-columns';
 import { CATALOG_PRODUCTS } from './data/catalog-seed';
+import { HOME_BANNERS } from './data/home-banner-seed';
 import { KAJARIA_COLOUR_SWATCHES } from './data/variant-image-assets';
 import { uploadLocalImage } from './utils/seed-media';
 import { HYDERABAD_PINCODES } from './data/hyderabad-pincodes';
@@ -356,6 +357,41 @@ async function patchVariantSwatchImages(strapi: Core.Strapi) {
   strapi.log.info(`Patched variant swatch images for ${slug}`);
 }
 
+async function seedHomeBanners(strapi: Core.Strapi) {
+  const count = await strapi.db.query('api::home-banner.home-banner').count();
+  if (count > 0) return;
+
+  let seeded = 0;
+  for (const banner of HOME_BANNERS) {
+    const imageId = await uploadLocalImage(
+      strapi,
+      banner.file,
+      banner.fileName,
+      banner.mime,
+      banner.alt
+    );
+    if (!imageId) {
+      strapi.log.warn(`seedHomeBanners: skipping ${banner.title} — image upload failed`);
+      continue;
+    }
+
+    await strapi.documents('api::home-banner.home-banner').create({
+      data: {
+        title: banner.title,
+        link: banner.link,
+        sortOrder: banner.sortOrder,
+        active: banner.active,
+        image: imageId,
+      },
+    });
+    seeded++;
+  }
+
+  if (seeded > 0) {
+    strapi.log.info(`Seeded ${seeded} home promotional banners`);
+  }
+}
+
 export default {
   register() {},
 
@@ -367,5 +403,6 @@ export default {
     await seedData(strapi);
     await patchMultiVariantCatalog(strapi);
     await patchVariantSwatchImages(strapi);
+    await seedHomeBanners(strapi);
   },
 };

@@ -1,11 +1,11 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { CartQuantityControl } from '@/components/CartQuantityControl';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { ProductImage } from '@/components/ProductImage';
 import { SectionHeader } from '@/components/SectionHeader';
 import { isSignedIn, promptAuth } from '@/lib/authGate';
 import { GST_LABEL } from '@/lib/pricing';
@@ -40,18 +40,7 @@ export default function CartScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         {items.map((item) => (
           <View key={item.lineId} style={styles.line}>
-            {item.imageUrl ? (
-              <Image
-                source={{ uri: item.imageUrl }}
-                style={styles.thumb}
-                contentFit="contain"
-                contentPosition="center"
-              />
-            ) : (
-              <View style={styles.thumbPlaceholder}>
-                <MaterialIcons name="inventory-2" size={24} color={colors.icon} />
-              </View>
-            )}
+            <ProductImage uri={item.imageUrl} accessibilityLabel={item.name} iconSize={24} style={styles.thumb} />
             <View style={styles.lineBody}>
               <Text style={styles.lineName} numberOfLines={2}>{item.name}</Text>
               <Text style={styles.lineMeta}>
@@ -136,14 +125,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.unit4,
     gap: spacing.unit3,
   },
-  thumb: { width: 72, height: 72, borderRadius: 8, backgroundColor: colors.surfaceContainer },
-  thumbPlaceholder: {
+  thumb: {
     width: 72,
     height: 72,
     borderRadius: 8,
-    backgroundColor: colors.surfaceContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: spacing.unit1,
+    paddingVertical: spacing.unit1,
   },
   lineBody: { flex: 1, gap: spacing.unit1 },
   lineName: { ...typography.labelLg, color: colors.primary },

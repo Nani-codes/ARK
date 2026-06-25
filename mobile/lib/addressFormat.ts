@@ -1,9 +1,10 @@
+import { brand } from './theme';
 import type { SavedAddress } from './types';
 
 export const ADDRESS_TYPE_CONFIG = {
   home:  { label: 'Home',  icon: 'home'        as const, color: '#1a8038' },
-  work:  { label: 'Work',  icon: 'business'    as const, color: '#002147' },
-  other: { label: 'Other', icon: 'location-on' as const, color: '#775a19' },
+  work:  { label: 'Work',  icon: 'business'    as const, color: brand.navy },
+  other: { label: 'Other', icon: 'location-on' as const, color: brand.goldDark },
 } as const;
 
 export function formatFullAddress(a: SavedAddress): string {

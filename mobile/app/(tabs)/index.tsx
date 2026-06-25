@@ -1,7 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -13,22 +12,16 @@ import {
 
 import { AppHeader } from '@/components/AppHeader';
 import { CategoryTile } from '@/components/CategoryTile';
+import { FreeDeliveryBanner } from '@/components/FreeDeliveryBanner';
 import { HomeBannerCarousel } from '@/components/HomeBannerCarousel';
 import { ProductCarousel } from '@/components/ProductCarousel';
 import { ScreenBackground } from '@/components/ScreenBackground';
-import { fetchAppConfig, fetchCategories, fetchHomeBanners, fetchOrders, fetchProducts } from '@/lib/api';
+import { ThubBrandingSection } from '@/components/ThubBrandingSection';
+import { fetchCategories, fetchHomeBanners, fetchProducts } from '@/lib/api';
 import { colors, spacing, typography } from '@/lib/theme';
-import { useAuthStore } from '@/stores/auth';
 import type { Category } from '@/lib/types';
 
 export default function HomeScreen() {
-  const token = useAuthStore((s) => s.token);
-
-  const { data: configData } = useQuery({
-    queryKey: ['app-config'],
-    queryFn: () => fetchAppConfig(),
-  });
-
   const { data: bannersData, isLoading: bannersLoading } = useQuery({
     queryKey: ['home-banners'],
     queryFn: fetchHomeBanners,
@@ -54,67 +47,19 @@ export default function HomeScreen() {
     queryFn: () => fetchProducts({ featured: true, pageSize: 8 }),
   });
 
-  const { data: ordersData } = useQuery({
-    queryKey: ['orders', 'buy-again'],
-    queryFn: fetchOrders,
-    enabled: !!token,
-  });
-
-  const buyAgainIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const order of ordersData?.data ?? []) {
-      for (const item of order.items ?? []) {
-        if (item.productDocumentId) ids.add(item.productDocumentId);
-      }
-    }
-    return [...ids].slice(0, 8);
-  }, [ordersData]);
-
-  const { data: buyAgainData } = useQuery({
-    queryKey: ['products', 'buy-again', buyAgainIds],
-    queryFn: async () => {
-      const all = await fetchProducts({ pageSize: 100 });
-      return { data: all.data.filter((p) => buyAgainIds.includes(p.documentId)) };
-    },
-    enabled: buyAgainIds.length > 0,
-  });
-
-  const config = configData?.data;
   const homeBanners = bannersData?.data ?? [];
   const categories = categoriesData?.data ?? [];
   const deals = dealsData?.data ?? [];
   const bestSellers = bestData?.data ?? [];
   const featured = featuredData?.data ?? [];
-  const buyAgain = buyAgainData?.data ?? [];
-
-  const promoLink = config?.promoCtaLink?.startsWith('/')
-    ? config.promoCtaLink
-    : '/search';
 
   return (
     <ScreenBackground variant="hero" style={styles.container}>
       <AppHeader showLocation showSearch variant="home" />
+      <FreeDeliveryBanner />
+      <ThubBrandingSection />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {config ? (
-          <Pressable
-            style={styles.promoStrip}
-            onPress={() => router.push(promoLink as never)}>
-            <MaterialIcons name="local-shipping" size={18} color={colors.secondary} />
-            <View style={styles.promoText}>
-              <Text style={styles.promoTitle}>{config.promoTitle}</Text>
-              <Text style={styles.promoSub}>{config.promoSubtitle}</Text>
-            </View>
-            <Text style={styles.promoCta}>{config.promoCtaLabel ?? 'Shop'}</Text>
-          </Pressable>
-        ) : null}
-
         <HomeBannerCarousel banners={homeBanners} loading={bannersLoading} />
-
-        <View style={styles.trustBar}>
-          <TrustItem icon="local-shipping" title="Pay on Delivery" sub="After verifying" />
-          <TrustItem icon="published-with-changes" title="7 Day Replacement" sub="Quality issues" />
-          <TrustItem icon="savings" title="5 Crore+ Savings" sub="Unbeatable prices" />
-        </View>
 
         <Pressable style={styles.prosCard} onPress={() => router.push('/(tabs)/professionals' as never)}>
           <MaterialIcons name="groups" size={28} color={colors.secondary} />
@@ -138,10 +83,6 @@ export default function HomeScreen() {
           products={bestSellers}
           emptyText="Browse categories for top picks"
         />
-
-        {buyAgain.length > 0 ? (
-          <ProductCarousel title="Buy Again" products={buyAgain} />
-        ) : null}
 
         <View style={styles.sectionHead}>
           <Text style={styles.sectionTitle}>Categories</Text>
@@ -170,62 +111,8 @@ export default function HomeScreen() {
   );
 }
 
-function TrustItem({
-  icon,
-  title,
-  sub,
-}: {
-  icon: keyof typeof MaterialIcons.glyphMap;
-  title: string;
-  sub: string;
-}) {
-  return (
-    <View style={styles.trustItem}>
-      <View style={styles.trustIcon}>
-        <MaterialIcons name={icon} size={22} color={colors.primary} />
-      </View>
-      <View>
-        <Text style={styles.trustTitle}>{title}</Text>
-        <Text style={styles.trustSub}>{sub}</Text>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  promoStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.unit2,
-    marginHorizontal: spacing.containerMargin,
-    marginTop: spacing.unit2,
-    backgroundColor: colors.secondaryContainer,
-    borderRadius: 8,
-    padding: spacing.unit3,
-  },
-  promoText: { flex: 1 },
-  promoTitle: { ...typography.labelLg, color: colors.primary, fontWeight: '700' },
-  promoSub: { ...typography.labelMd, color: colors.onSurfaceVariant, fontSize: 11 },
-  promoCta: { ...typography.labelMd, color: colors.secondary, fontWeight: '700' },
-  trustBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.containerMargin,
-    paddingVertical: spacing.unit4,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.outlineVariant,
-    backgroundColor: colors.surface,
-    gap: spacing.unit2,
-  },
-  trustItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.unit2 },
-  trustIcon: {
-    backgroundColor: colors.surfaceContainerLow,
-    padding: spacing.unit2,
-    borderRadius: 8,
-  },
-  trustTitle: { ...typography.labelLg, color: colors.primary, fontSize: 11, lineHeight: 14 },
-  trustSub: { fontSize: 10, color: colors.onSurfaceVariant, lineHeight: 12 },
   scroll: { paddingBottom: spacing.unit12 },
   prosCard: {
     flexDirection: 'row',
