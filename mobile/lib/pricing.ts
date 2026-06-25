@@ -3,10 +3,13 @@ export const GST_RATE = 0.18;
 
 export const GST_LABEL = '18% GST';
 
+/** Minimum subtotal (₹) for free delivery — keep in sync with FreeDeliveryBanner. */
+export const FREE_DELIVERY_MIN_ORDER = 10_000;
+
 export const DELIVERY_FEE_TIERS = {
   low: 199,
   mid: 99,
-  freeThreshold: 2999,
+  freeThreshold: FREE_DELIVERY_MIN_ORDER,
   midThreshold: 999,
 } as const;
 

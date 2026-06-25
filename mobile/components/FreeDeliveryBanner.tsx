@@ -2,8 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, spacing, typography } from '@/lib/theme';
-
-const FREE_DELIVERY_MIN_ORDER = 10_000;
+import { FREE_DELIVERY_MIN_ORDER } from '@/lib/pricing';
 
 export function FreeDeliveryBanner() {
   return (
