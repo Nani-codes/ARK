@@ -12,19 +12,16 @@ import {
 
 import { AppHeader } from '@/components/AppHeader';
 import { CategoryTile } from '@/components/CategoryTile';
+import { FreeDeliveryBanner } from '@/components/FreeDeliveryBanner';
 import { HomeBannerCarousel } from '@/components/HomeBannerCarousel';
 import { ProductCarousel } from '@/components/ProductCarousel';
 import { ScreenBackground } from '@/components/ScreenBackground';
-import { fetchAppConfig, fetchCategories, fetchHomeBanners, fetchProducts } from '@/lib/api';
+import { ThubBrandingSection } from '@/components/ThubBrandingSection';
+import { fetchCategories, fetchHomeBanners, fetchProducts } from '@/lib/api';
 import { colors, spacing, typography } from '@/lib/theme';
 import type { Category } from '@/lib/types';
 
 export default function HomeScreen() {
-  const { data: configData } = useQuery({
-    queryKey: ['app-config'],
-    queryFn: () => fetchAppConfig(),
-  });
-
   const { data: bannersData, isLoading: bannersLoading } = useQuery({
     queryKey: ['home-banners'],
     queryFn: fetchHomeBanners,
@@ -50,34 +47,18 @@ export default function HomeScreen() {
     queryFn: () => fetchProducts({ featured: true, pageSize: 8 }),
   });
 
-  const config = configData?.data;
   const homeBanners = bannersData?.data ?? [];
   const categories = categoriesData?.data ?? [];
   const deals = dealsData?.data ?? [];
   const bestSellers = bestData?.data ?? [];
   const featured = featuredData?.data ?? [];
 
-  const promoLink = config?.promoCtaLink?.startsWith('/')
-    ? config.promoCtaLink
-    : '/search';
-
   return (
     <ScreenBackground variant="hero" style={styles.container}>
       <AppHeader showLocation showSearch variant="home" />
+      <FreeDeliveryBanner />
+      <ThubBrandingSection />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {config ? (
-          <Pressable
-            style={styles.promoStrip}
-            onPress={() => router.push(promoLink as never)}>
-            <MaterialIcons name="local-shipping" size={18} color={colors.secondary} />
-            <View style={styles.promoText}>
-              <Text style={styles.promoTitle}>{config.promoTitle}</Text>
-              <Text style={styles.promoSub}>{config.promoSubtitle}</Text>
-            </View>
-            <Text style={styles.promoCta}>{config.promoCtaLabel ?? 'Shop'}</Text>
-          </Pressable>
-        ) : null}
-
         <HomeBannerCarousel banners={homeBanners} loading={bannersLoading} />
 
         <Pressable style={styles.prosCard} onPress={() => router.push('/(tabs)/professionals' as never)}>
@@ -132,20 +113,6 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  promoStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.unit2,
-    marginHorizontal: spacing.containerMargin,
-    marginTop: spacing.unit2,
-    backgroundColor: colors.secondaryContainer,
-    borderRadius: 8,
-    padding: spacing.unit3,
-  },
-  promoText: { flex: 1 },
-  promoTitle: { ...typography.labelLg, color: colors.primary, fontWeight: '700' },
-  promoSub: { ...typography.labelMd, color: colors.onSurfaceVariant, fontSize: 11 },
-  promoCta: { ...typography.labelMd, color: colors.secondary, fontWeight: '700' },
   scroll: { paddingBottom: spacing.unit12 },
   prosCard: {
     flexDirection: 'row',
