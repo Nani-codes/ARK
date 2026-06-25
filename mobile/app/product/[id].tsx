@@ -1,6 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -18,6 +17,7 @@ import { AddToCartControl } from '@/components/AddToCartControl';
 import { AppHeader } from '@/components/AppHeader';
 import { CollapsibleSection } from '@/components/CollapsibleSection';
 import { PricingTierTable } from '@/components/PricingTierTable';
+import { ProductImage } from '@/components/ProductImage';
 import { ProductPriceBlock } from '@/components/ProductPriceBlock';
 import { TemperatureBadge } from '@/components/TemperatureBadge';
 import { VariantPicker } from '@/components/VariantPicker';
@@ -129,18 +129,12 @@ export default function ProductDetailScreen() {
                 <Text style={styles.imageBadgeText}>{percent}% OFF</Text>
               </View>
             ) : null}
-            {uri ? (
-              <Image
-                source={{ uri }}
-                style={styles.image}
-                contentFit="contain"
-                contentPosition="center"
-              />
-            ) : (
-              <View style={styles.placeholder}>
-                <MaterialIcons name="inventory-2" size={64} color={colors.icon} />
-              </View>
-            )}
+            <ProductImage
+              uri={uri}
+              accessibilityLabel={product.name}
+              iconSize={64}
+              style={styles.image}
+            />
           </View>
 
           {product.inStock ? (
@@ -280,8 +274,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainerLowest,
     borderWidth: 1,
     borderColor: colors.outlineVariant,
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'relative',
   },
   imageBadge: {
     position: 'absolute',
@@ -294,8 +287,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   imageBadgeText: { ...typography.labelMd, fontWeight: '800', color: colors.primary },
-  image: { width: '100%', height: '100%', alignSelf: 'center' },
-  placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  image: {
+    width: '100%',
+    height: '100%',
+    paddingHorizontal: spacing.unit4,
+    paddingVertical: spacing.unit3,
+  },
   content: { paddingHorizontal: spacing.containerMargin },
   stockTag: {
     alignSelf: 'flex-start',
