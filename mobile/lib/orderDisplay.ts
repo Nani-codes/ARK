@@ -1,4 +1,4 @@
-import { colors } from '@/lib/theme';
+import { brand, colors } from '@/lib/theme';
 import type { Order } from '@/lib/types';
 
 export const ORDER_STATUS_STYLES: Record<
@@ -6,8 +6,8 @@ export const ORDER_STATUS_STYLES: Record<
   { bg: string; text: string; label: string }
 > = {
   pending: { bg: colors.surfaceContainerHigh, text: colors.onSurfaceVariant, label: 'Pending' },
-  confirmed: { bg: colors.primaryContainer, text: '#ffb800', label: 'Confirmed' },
-  out_for_delivery: { bg: '#ffb800', text: colors.primaryContainer, label: 'Out for Delivery' },
+  confirmed: { bg: colors.primaryContainer, text: brand.gold, label: 'Confirmed' },
+  out_for_delivery: { bg: brand.gold, text: colors.primaryContainer, label: 'Out for Delivery' },
   delivered: { bg: colors.successBg, text: colors.success, label: 'Delivered' },
   cancelled: { bg: colors.errorContainer, text: colors.error, label: 'Cancelled' },
 };
@@ -17,7 +17,7 @@ export const QUOTE_STATUS_STYLES: Record<
   { bg: string; text: string; label: string }
 > = {
   new: { bg: colors.surfaceContainerHigh, text: colors.onSurfaceVariant, label: 'Submitted' },
-  contacted: { bg: colors.primaryContainer, text: '#ffb800', label: 'Contacted' },
+  contacted: { bg: colors.primaryContainer, text: brand.gold, label: 'Contacted' },
   quoted: { bg: colors.secondaryContainer, text: colors.primary, label: 'Quoted' },
   closed: { bg: colors.successBg, text: colors.success, label: 'Closed' },
 };

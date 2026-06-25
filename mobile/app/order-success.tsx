@@ -19,7 +19,7 @@ export default function OrderSuccessScreen() {
       <AppHeader showBack showCart={false} showLocation={false} />
       <View style={styles.body}>
         <View style={styles.iconCircle}>
-          <MaterialIcons name="check-circle" size={64} color={brand.goldBright} />
+          <MaterialIcons name="check-circle" size={64} color={brand.gold} />
         </View>
         <Text style={styles.title}>Order #{displayNum} Placed Successfully!</Text>
         <Text style={styles.sub}>{orderSuccessEtaMessage(estimatedDeliveryAt)}</Text>

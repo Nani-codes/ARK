@@ -1,5 +1,7 @@
 import { Alert, NativeModules } from 'react-native';
 
+import { brand } from '@/lib/theme';
+
 import type {
   RazorpayCheckoutResult,
   RazorpayOrderResponse,
@@ -52,7 +54,7 @@ async function openNativeRazorpayCheckout(
         contact: prefill?.contact,
         email: prefill?.email,
       },
-      theme: { color: '#1B3A6B' },
+      theme: { color: brand.navy },
     });
   } catch (err: unknown) {
     const code = (err as { code?: number })?.code;
