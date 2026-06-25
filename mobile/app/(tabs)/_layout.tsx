@@ -55,6 +55,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="orders"
         options={{
+          href: null,
           title: 'Orders',
           tabBarIcon: ({ focused }) => <TabIcon name="receipt-long" focused={focused} />,
         }}
