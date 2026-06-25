@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -13,10 +13,11 @@ export default function CategoryScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const [brand, setBrand] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ['products', slug, brand],
     queryFn: () => fetchProducts({ categorySlug: slug, brand: brand ?? undefined, pageSize: 50 }),
     enabled: !!slug,
+    placeholderData: keepPreviousData,
   });
 
   const { data: allInCategory } = useQuery({
@@ -34,55 +35,72 @@ export default function CategoryScreen() {
   }, [allInCategory]);
 
   const products = data?.data ?? [];
-  const title = products[0]?.category?.name ?? slug?.replace(/-/g, ' ') ?? 'Category';
+  const title =
+    products[0]?.category?.name ??
+    allInCategory?.data?.[0]?.category?.name ??
+    slug?.replace(/-/g, ' ') ??
+    'Category';
+
+  const showInitialLoading = isLoading && !data;
+  const showEmpty = !isFetching && products.length === 0;
 
   return (
     <View style={styles.container}>
       <AppHeader title={title} showBack showLocation={false} showSearch />
       {brands.length > 1 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.brandRow}
-          contentContainerStyle={styles.brandRowContent}>
-          <Pressable
-            style={[styles.chip, !brand && styles.chipActive]}
-            onPress={() => setBrand(null)}>
-            <Text style={[styles.chipText, !brand && styles.chipTextActive]}>All</Text>
-          </Pressable>
-          {brands.map((b) => (
+        <View style={styles.filterSection}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.brandRow}
+            contentContainerStyle={styles.brandRowContent}>
             <Pressable
-              key={b}
-              style={[styles.chip, brand === b && styles.chipActive]}
-              onPress={() => setBrand(b)}>
-              <Text style={[styles.chipText, brand === b && styles.chipTextActive]}>{b}</Text>
+              style={[styles.chip, !brand && styles.chipActive]}
+              onPress={() => setBrand(null)}>
+              <Text style={[styles.chipText, !brand && styles.chipTextActive]}>All</Text>
             </Pressable>
-          ))}
-        </ScrollView>
-      ) : null}
-      {isLoading ? (
-        <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
-      ) : products.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <Text style={styles.empty}>No products in this category yet.</Text>
-          <Text style={styles.emptySub}>Try searching the full catalog or browse other categories.</Text>
-          <PrimaryButton label="Search Catalog" onPress={() => router.push('/search')} />
+            {brands.map((b) => (
+              <Pressable
+                key={b}
+                style={[styles.chip, brand === b && styles.chipActive]}
+                onPress={() => setBrand(b)}>
+                <Text style={[styles.chipText, brand === b && styles.chipTextActive]}>{b}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
         </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.list}>
-          {products.map((p) => (
-            <View key={p.documentId} style={styles.item}>
-              <ProductCard product={p} compact />
-            </View>
-          ))}
-        </ScrollView>
-      )}
+      ) : null}
+      <View style={styles.productArea}>
+        {showInitialLoading ? (
+          <ActivityIndicator style={styles.loader} color={colors.primary} />
+        ) : showEmpty ? (
+          <View style={styles.emptyWrap}>
+            <Text style={styles.empty}>No products in this category yet.</Text>
+            <Text style={styles.emptySub}>Try searching the full catalog or browse other categories.</Text>
+            <PrimaryButton label="Search Catalog" onPress={() => router.push('/search')} />
+          </View>
+        ) : (
+          <ScrollView style={styles.listScroll} contentContainerStyle={styles.list}>
+            {products.map((p) => (
+              <View key={p.documentId} style={styles.item}>
+                <ProductCard product={p} compact />
+              </View>
+            ))}
+          </ScrollView>
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  filterSection: {
+    flexShrink: 0,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+  },
   brandRow: {
     flexGrow: 0,
     height: 57,
@@ -90,9 +108,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.unit3,
     borderBottomWidth: 1,
     borderBottomColor: colors.outlineVariant,
-    width: '100%',
-    maxWidth: 720,
-    alignSelf: 'center',
   },
   brandRowContent: {
     flexDirection: 'row',
@@ -111,21 +126,21 @@ const styles = StyleSheet.create({
     borderColor: colors.outlineVariant,
     backgroundColor: colors.surface,
   },
-  chipActive: { borderColor: colors.secondary, backgroundColor: colors.secondaryContainer },
+  chipActive: { borderColor: colors.secondary, backgroundColor: colors.secondary },
   chipText: {
     ...typography.labelLg,
     lineHeight: 20,
     color: colors.onSurfaceVariant,
     includeFontPadding: false,
   },
-  chipTextActive: { color: colors.primary },
+  chipTextActive: { color: colors.onSecondary },
+  productArea: { flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' },
+  listScroll: { flex: 1 },
+  loader: { marginTop: 40 },
   list: {
     padding: spacing.containerMargin,
     gap: spacing.unit4,
     paddingBottom: spacing.unit12,
-    width: '100%',
-    maxWidth: 720,
-    alignSelf: 'center',
   },
   item: { width: '100%' },
   emptyWrap: {
@@ -134,9 +149,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: spacing.unit8,
     gap: spacing.unit3,
-    width: '100%',
-    maxWidth: 720,
-    alignSelf: 'center',
   },
   empty: { ...typography.headlineMd, color: colors.onSurfaceVariant, textAlign: 'center' },
   emptySub: { ...typography.bodyMd, color: colors.onSurfaceVariant, textAlign: 'center' },
