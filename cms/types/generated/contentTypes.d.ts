@@ -544,39 +544,6 @@ export interface ApiAppConfigAppConfig extends Struct.SingleTypeSchema {
   };
 }
 
-export interface ApiHomeBannerHomeBanner extends Struct.CollectionTypeSchema {
-  collectionName: 'home_banners';
-  info: {
-    description: 'Promotional banners for the mobile home carousel';
-    displayName: 'Home Banner';
-    pluralName: 'home-banners';
-    singularName: 'home-banner';
-  };
-  options: {
-    draftAndPublish: false;
-  };
-  attributes: {
-    active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
-    createdAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    image: Schema.Attribute.Media<'images'>;
-    link: Schema.Attribute.String;
-    locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::home-banner.home-banner'
-    > &
-      Schema.Attribute.Private;
-    publishedAt: Schema.Attribute.DateTime;
-    sortOrder: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
-    title: Schema.Attribute.String & Schema.Attribute.Required;
-    updatedAt: Schema.Attribute.DateTime;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-  };
-}
-
 export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   collectionName: 'categories';
   info: {
@@ -611,6 +578,39 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiHomeBannerHomeBanner extends Struct.CollectionTypeSchema {
+  collectionName: 'home_banners';
+  info: {
+    description: 'Promotional banners for the mobile home carousel';
+    displayName: 'Home Banner';
+    pluralName: 'home-banners';
+    singularName: 'home-banner';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    image: Schema.Attribute.Media<'images'> & Schema.Attribute.Required;
+    link: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::home-banner.home-banner'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    sortOrder: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
   collectionName: 'orders';
   info: {
@@ -631,18 +631,17 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     deliveryAddress: Schema.Attribute.Text & Schema.Attribute.Required;
     deliveryFee: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
-    deliverySlot: Schema.Attribute.Enumeration<
-      ['asap', 'two_hour', 'next_day']
-    > &
-      Schema.Attribute.DefaultTo<'asap'>;
     estimatedDeliveryAt: Schema.Attribute.DateTime;
     gstin: Schema.Attribute.String;
+    installationRequired: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
     internalNotes: Schema.Attribute.Text;
     items: Schema.Attribute.Component<'order.order-item', true>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::order.order'> &
       Schema.Attribute.Private;
     neftProofUrl: Schema.Attribute.String;
+    notifyPhone: Schema.Attribute.String;
     orderNumber: Schema.Attribute.String & Schema.Attribute.Unique;
     orderStatus: Schema.Attribute.Enumeration<
       ['pending', 'confirmed', 'out_for_delivery', 'delivered', 'cancelled']
@@ -1370,6 +1369,7 @@ export interface PluginUsersPermissionsUser
       }>;
     phone: Schema.Attribute.String;
     professionalBio: Schema.Attribute.Text;
+    professionalWorks: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;
     professionType: Schema.Attribute.Enumeration<
       [
         'contractor',
@@ -1413,8 +1413,8 @@ declare module '@strapi/strapi' {
       'admin::user': AdminUser;
       'api::address.address': ApiAddressAddress;
       'api::app-config.app-config': ApiAppConfigAppConfig;
-      'api::home-banner.home-banner': ApiHomeBannerHomeBanner;
       'api::category.category': ApiCategoryCategory;
+      'api::home-banner.home-banner': ApiHomeBannerHomeBanner;
       'api::order.order': ApiOrderOrder;
       'api::product.product': ApiProductProduct;
       'api::quote-request.quote-request': ApiQuoteRequestQuoteRequest;
