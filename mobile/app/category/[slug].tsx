@@ -47,6 +47,7 @@ export default function CategoryScreen() {
   return (
     <View style={styles.container}>
       <AppHeader title={title} showBack showLocation={false} showSearch />
+
       {brands.length > 1 ? (
         <View style={styles.filterSection}>
           <ScrollView
@@ -70,6 +71,7 @@ export default function CategoryScreen() {
           </ScrollView>
         </View>
       ) : null}
+
       <View style={styles.productArea}>
         {showInitialLoading ? (
           <ActivityIndicator style={styles.loader} color={colors.primary} />
@@ -80,12 +82,22 @@ export default function CategoryScreen() {
             <PrimaryButton label="Search Catalog" onPress={() => router.push('/search')} />
           </View>
         ) : (
-          <ScrollView style={styles.listScroll} contentContainerStyle={styles.list}>
-            {products.map((p) => (
-              <View key={p.documentId} style={styles.item}>
-                <ProductCard product={p} compact />
-              </View>
-            ))}
+          <ScrollView style={styles.listScroll} contentContainerStyle={styles.grid}>
+            {products.map((p, i) => {
+              // 2-column grid — pair items
+              if (i % 2 !== 0) return null;
+              const next = products[i + 1];
+              return (
+                <View key={p.documentId} style={styles.gridRow}>
+                  <View style={styles.gridCell}>
+                    <ProductCard product={p} compact />
+                  </View>
+                  <View style={styles.gridCell}>
+                    {next ? <ProductCard product={next} compact /> : null}
+                  </View>
+                </View>
+              );
+            })}
           </ScrollView>
         )}
       </View>
@@ -122,7 +134,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 999,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.outlineVariant,
     backgroundColor: colors.surface,
   },
@@ -133,16 +145,24 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceVariant,
     includeFontPadding: false,
   },
-  chipTextActive: { color: colors.onSecondary },
+  chipTextActive: { color: colors.onSecondary, fontWeight: '700' },
   productArea: { flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' },
   listScroll: { flex: 1 },
   loader: { marginTop: 40 },
-  list: {
+  grid: {
     padding: spacing.containerMargin,
-    gap: spacing.unit4,
+    gap: spacing.unit3,
     paddingBottom: spacing.unit12,
   },
-  item: { width: '100%' },
+  gridRow: {
+    flexDirection: 'row',
+    gap: spacing.unit3,
+    alignItems: 'stretch',
+  },
+  gridCell: {
+    flex: 1,
+    minWidth: 0,       // prevents flex children from overflowing
+  },
   emptyWrap: {
     flex: 1,
     alignItems: 'center',

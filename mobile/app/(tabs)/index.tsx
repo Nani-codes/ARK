@@ -18,7 +18,7 @@ import { ProductCarousel } from '@/components/ProductCarousel';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { ThubBrandingSection } from '@/components/ThubBrandingSection';
 import { fetchCategories, fetchHomeBanners, fetchProducts } from '@/lib/api';
-import { colors, spacing, typography } from '@/lib/theme';
+import { colors, shadows, spacing, typography } from '@/lib/theme';
 import type { Category } from '@/lib/types';
 
 export default function HomeScreen() {
@@ -61,38 +61,38 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <HomeBannerCarousel banners={homeBanners} loading={bannersLoading} />
 
-        <Pressable style={styles.prosCard} onPress={() => router.push('/(tabs)/professionals' as never)}>
-          <MaterialIcons name="groups" size={28} color={colors.secondary} />
-          <View style={styles.prosText}>
-            <Text style={styles.prosTitle}>Find Professionals</Text>
-            <Text style={styles.prosSub}>Contractors & trades in Hyderabad</Text>
-          </View>
-          <MaterialIcons name="chevron-right" size={24} color={colors.iconMuted} />
-        </Pressable>
-
+        {/* Deals of the Week */}
         <ProductCarousel
           title="Deals of the Week"
           loading={dealsLoading}
           products={deals}
           emptyText="New deals coming soon"
+          viewAllHref="/search"
         />
 
+        <View style={styles.divider} />
+
+        {/* Best Sellers */}
         <ProductCarousel
           title="Best Sellers"
           loading={bestLoading}
           products={bestSellers}
           emptyText="Browse categories for top picks"
+          viewAllHref="/search"
         />
 
+        <View style={styles.divider} />
+
+        {/* Categories Section */}
         <View style={styles.sectionHead}>
           <Text style={styles.sectionTitle}>Categories</Text>
           <Pressable onPress={() => router.push('/(tabs)/categories')}>
-            <Text style={styles.link}>View All</Text>
+            <Text style={styles.link}>View All →</Text>
           </Pressable>
         </View>
 
         {catLoading ? (
-          <ActivityIndicator color={colors.primary} />
+          <ActivityIndicator color={colors.primary} style={{ marginBottom: spacing.unit6 }} />
         ) : (
           <View style={styles.catGrid}>
             {categories.map((cat: Category) => (
@@ -101,10 +101,28 @@ export default function HomeScreen() {
           </View>
         )}
 
+        <View style={styles.divider} />
+
+        {/* Find Professionals — moved below products */}
+        <Pressable style={styles.prosCard} onPress={() => router.push('/(tabs)/professionals' as never)}>
+          <View style={styles.prosIconWrap}>
+            <MaterialIcons name="groups" size={28} color={colors.secondary} />
+          </View>
+          <View style={styles.prosText}>
+            <Text style={styles.prosTitle}>Find Professionals</Text>
+            <Text style={styles.prosSub}>Verified contractors & trades in Hyderabad</Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={24} color={colors.iconMuted} />
+        </Pressable>
+
+        <View style={styles.divider} />
+
+        {/* Popular Products */}
         <ProductCarousel
           title="Popular Products"
           loading={featuredLoading}
           products={featured}
+          viewAllHref="/search"
         />
       </ScrollView>
     </ScreenBackground>
@@ -114,17 +132,35 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { paddingBottom: spacing.unit12 },
+  divider: {
+    height: 1,
+    backgroundColor: colors.outlineVariant,
+    marginHorizontal: spacing.containerMargin,
+    marginBottom: spacing.unit6,
+    opacity: 0.5,
+  },
   prosCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.unit3,
     marginHorizontal: spacing.containerMargin,
-    marginBottom: spacing.unit4,
+    marginBottom: spacing.unit6,
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.outlineVariant,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.secondary,
     padding: spacing.unit4,
+    ...shadows.sm,
+  },
+  prosIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: colors.secondaryContainer,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   prosText: { flex: 1 },
   prosTitle: { ...typography.labelLg, color: colors.primary, fontWeight: '700' },
@@ -134,10 +170,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.containerMargin,
-    marginBottom: spacing.unit4,
+    marginBottom: spacing.unit3,
   },
-  sectionTitle: { ...typography.headlineMd, color: colors.primary, paddingHorizontal: spacing.containerMargin, marginBottom: spacing.unit2 },
-  link: { ...typography.labelLg, color: colors.secondary },
+  sectionTitle: { ...typography.headlineMd, color: colors.primary },
+  link: { ...typography.labelLg, color: colors.secondary, fontWeight: '700' },
   catGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

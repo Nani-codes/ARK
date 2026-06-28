@@ -75,6 +75,41 @@ export const spacing = {
   containerMargin: 16,
 };
 
+export const radii = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  full: 999,
+};
+
+export const shadows = {
+  /** Subtle lift — cards, tiles */
+  sm: {
+    shadowColor: '#000a1e',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  /** Medium lift — floating cards, active chips */
+  md: {
+    shadowColor: '#000a1e',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  /** Strong lift — modals, bottom sheets */
+  lg: {
+    shadowColor: '#000a1e',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+};
+
 export const typography = {
   headlineLg: { fontSize: 32, lineHeight: 40, fontWeight: '700' as const },
   headlineLgMobile: { fontSize: 28, lineHeight: 36, fontWeight: '700' as const },

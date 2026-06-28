@@ -1,14 +1,36 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 
 import { colors, spacing, typography } from '@/lib/theme';
 
 const FREE_DELIVERY_MIN_ORDER = 10_000;
 
 export function FreeDeliveryBanner() {
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(slideAnim, {
+          toValue: 6,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [slideAnim]);
+
   return (
     <View style={styles.wrap} accessibilityRole="text">
-      <MaterialIcons name="local-shipping" size={16} color={colors.secondary} />
+      <Animated.View style={{ transform: [{ translateX: slideAnim }] }}>
+        <MaterialIcons name="local-shipping" size={16} color={colors.primary} />
+      </Animated.View>
       <Text style={styles.text}>
         Free delivery on orders above ₹{FREE_DELIVERY_MIN_ORDER.toLocaleString('en-IN')}
       </Text>
@@ -31,7 +53,7 @@ const styles = StyleSheet.create({
   text: {
     ...typography.labelMd,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'center',
   },
 });
