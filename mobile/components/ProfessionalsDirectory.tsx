@@ -8,7 +8,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { AppHeader } from '@/components/AppHeader';
 import { fetchProfessionals } from '@/lib/api';
 import { professionIcon, professionLabel } from '@/lib/professions';
-import { colors, spacing, typography } from '@/lib/theme';
+import { colors, shadows, spacing, typography } from '@/lib/theme';
 
 type ProfessionalsDirectoryProps = {
   showBack?: boolean;
@@ -29,6 +29,7 @@ export function ProfessionalsDirectory({ showBack = false }: ProfessionalsDirect
         showBack={showBack}
         showLocation={false}
         showSearch={false}
+        variant="navy"
       />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.intro}>
@@ -39,11 +40,17 @@ export function ProfessionalsDirectory({ showBack = false }: ProfessionalsDirect
           <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.unit8 }} />
         ) : professionals.length === 0 ? (
           <View style={styles.empty}>
-            <MaterialIcons name="groups" size={48} color={colors.iconMuted} />
+            <View style={styles.emptyIconWrap}>
+              <MaterialIcons name="groups" size={40} color={colors.primary} />
+            </View>
             <Text style={styles.emptyTitle}>No professionals listed yet</Text>
             <Text style={styles.emptySub}>
-              Pros can build a portfolio from Profile → My Professional Profile.
+              Verified contractors will appear here once listed.
             </Text>
+            <Pressable style={styles.becomeProBtn} onPress={() => router.push('/profile/professional' as never)}>
+              <MaterialIcons name="engineering" size={18} color={colors.onSecondary} />
+              <Text style={styles.becomeProText}>Become a Professional</Text>
+            </Pressable>
           </View>
         ) : (
           <View style={styles.grid}>
@@ -96,8 +103,28 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.containerMargin, paddingBottom: spacing.unit12 },
   intro: { ...typography.bodyMd, color: colors.onSurfaceVariant, marginBottom: spacing.unit6 },
   empty: { alignItems: 'center', gap: spacing.unit3, paddingVertical: spacing.unit12 },
-  emptyTitle: { ...typography.headlineMd, color: colors.onSurfaceVariant },
+  emptyIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: colors.secondaryContainer,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.unit2,
+  },
+  emptyTitle: { ...typography.headlineMd, color: colors.primary, textAlign: 'center' },
   emptySub: { ...typography.bodyMd, color: colors.onSurfaceVariant, textAlign: 'center' },
+  becomeProBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.unit2,
+    marginTop: spacing.unit2,
+    backgroundColor: colors.secondary,
+    borderRadius: 999,
+    paddingHorizontal: spacing.unit6,
+    paddingVertical: spacing.unit3,
+  },
+  becomeProText: { ...typography.labelLg, color: colors.onSecondary, fontWeight: '700' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.unit3 },
   card: {
     width: '47%',
@@ -109,6 +136,7 @@ const styles = StyleSheet.create({
     borderColor: colors.outlineVariant,
     padding: spacing.unit4,
     alignItems: 'center',
+    ...shadows.sm,
   },
   cover: {
     width: 56,

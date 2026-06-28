@@ -12,13 +12,12 @@ function TabIcon({
   focused: boolean;
 }) {
   return (
-    <View style={styles.iconContainer}>
+    <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
       <MaterialIcons
         name={name}
-        size={26}
-        color={focused ? colors.secondary : colors.iconMuted}
+        size={24}
+        color={focused ? colors.onSecondary : colors.iconMuted}
       />
-      {focused ? <View style={styles.activeIndicator} /> : null}
     </View>
   );
 }
@@ -80,17 +79,21 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    height: Platform.OS === 'ios' ? 88 : 72,
-    paddingTop: 8,
+    height: Platform.OS === 'ios' ? 90 : 74,
+    paddingTop: 6,
     backgroundColor: colors.surface,
     borderTopColor: colors.outlineVariant,
     borderTopWidth: 1,
     ...Platform.select({
       web: {
-        boxShadow: '0 -2px 8px rgba(0, 10, 30, 0.08)',
+        boxShadow: '0 -4px 16px rgba(0, 10, 30, 0.10)',
       },
       default: {
-        elevation: 8,
+        elevation: 12,
+        shadowColor: '#000a1e',
+        shadowOffset: { width: 0, height: -3 },
+        shadowOpacity: 0.10,
+        shadowRadius: 8,
       },
     }),
   },
@@ -102,14 +105,11 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 32,
-    minWidth: 48,
+    height: 32,
+    minWidth: 56,
+    borderRadius: 16,
   },
-  activeIndicator: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+  iconContainerActive: {
     backgroundColor: colors.secondary,
-    marginTop: 4,
   },
 });

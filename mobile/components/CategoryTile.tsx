@@ -4,7 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { getCategoryImage } from '@/lib/categoryImages';
-import { colors, spacing, typography } from '@/lib/theme';
+import { colors, shadows, spacing, typography } from '@/lib/theme';
 import type { Category } from '@/lib/types';
 
 type CategoryTileProps = {
@@ -19,7 +19,7 @@ export function CategoryTile({ category, variant = 'grid', style }: CategoryTile
   if (variant === 'row') {
     return (
       <Pressable
-        style={[styles.row, style]}
+        style={({ pressed }) => [styles.row, pressed && { opacity: 0.8 }, style]}
         onPress={() => router.push(`/category/${category.slug}`)}>
         <View style={styles.rowImageWrap}>
           {image ? (
@@ -36,7 +36,7 @@ export function CategoryTile({ category, variant = 'grid', style }: CategoryTile
 
   return (
     <Pressable
-      style={[styles.tile, style]}
+      style={({ pressed }) => [styles.tile, pressed && { opacity: 0.8 }, style]}
       onPress={() => router.push(`/category/${category.slug}`)}>
       <View style={styles.imageBox}>
         {image ? (
@@ -64,7 +64,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.unit2,
-    overflow: 'hidden',
+    // No overflow:hidden — would clip Android elevation shadow
+    ...shadows.sm,
   },
   image: { width: '100%', height: '100%' },
   label: {
@@ -83,11 +84,12 @@ const styles = StyleSheet.create({
     borderColor: colors.outlineVariant,
     padding: spacing.unit4,
     gap: spacing.unit4,
+    ...shadows.sm,
   },
   rowImageWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
+    width: 64,
+    height: 64,
+    borderRadius: 10,
     backgroundColor: colors.surfaceContainerLow,
     alignItems: 'center',
     justifyContent: 'center',
