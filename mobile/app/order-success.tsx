@@ -3,8 +3,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
+import { GuestAuthPrompt } from '@/components/GuestAuthPrompt';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { orderSuccessEtaMessage } from '@/lib/deliveryEstimate';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { brand, colors, spacing, typography } from '@/lib/theme';
 
 export default function OrderSuccessScreen() {
@@ -12,7 +14,23 @@ export default function OrderSuccessScreen() {
     orderNumber: string;
     estimatedDeliveryAt?: string;
   }>();
+  const { isHydrated, token } = useRequireAuth();
   const displayNum = orderNumber?.replace('ORD-', '') ?? '—';
+
+  if (isHydrated && !token) {
+    return (
+      <View style={styles.container}>
+        <AppHeader showBack showCart={false} showLocation={false} />
+        <GuestAuthPrompt
+          icon="check-circle"
+          title="Sign in to view your order"
+          subtitle="Order confirmations are available in your account after you sign in."
+          returnTo="/(tabs)/orders"
+          message="Sign in to view your order"
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

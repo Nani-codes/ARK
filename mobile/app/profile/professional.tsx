@@ -26,7 +26,7 @@ import {
   updateMyProfessionalProfile,
   updatePortfolioProject,
 } from '@/lib/api';
-import { promptAuth } from '@/lib/authGate';
+import { promptAuth, isSignedIn } from '@/lib/authGate';
 import { PROFESSION_OPTIONS, professionLabel } from '@/lib/professions';
 import { colors, spacing, typography } from '@/lib/theme';
 import type { PortfolioProject, ProfessionType } from '@/lib/types';
@@ -210,6 +210,14 @@ export default function ProfessionalSettingsScreen() {
   };
 
   const handleSave = async () => {
+    if (!isSignedIn()) {
+      promptAuth({
+        returnTo: '/profile/professional',
+        message: 'Sign in to update your professional profile',
+      });
+      return;
+    }
+
     if (isProfessional && professionType === 'other' && !otherProfession.trim()) {
       Alert.alert('Profession required', 'Please specify your profession.');
       return;

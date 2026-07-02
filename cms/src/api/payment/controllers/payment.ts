@@ -1,5 +1,7 @@
 import crypto from 'crypto';
 
+import { resolveAuthUser } from '../../../lib/resolveAuthUser';
+
 type RazorpayOrderResponse = {
   id: string;
   amount: number;
@@ -9,6 +11,9 @@ type RazorpayOrderResponse = {
 
 export default {
   async createRazorpayOrder(ctx) {
+    const user = await resolveAuthUser(ctx);
+    if (!user) return ctx.unauthorized('You must be logged in');
+
     const { amount, currency = 'INR' } = ctx.request.body ?? {};
 
     const paise = Math.round(Number(amount) * 100);
@@ -32,7 +37,7 @@ export default {
       });
     }
 
-    const receipt = `ark_${Date.now()}`;
+    const receipt = `ark_${user.id}_${Date.now()}`;
     const auth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
 
     const res = await fetch('https://api.razorpay.com/v1/orders', {
@@ -57,6 +62,9 @@ export default {
   },
 
   async verifyRazorpayPayment(ctx) {
+    const user = await resolveAuthUser(ctx);
+    if (!user) return ctx.unauthorized('You must be logged in');
+
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
       ctx.request.body ?? {};
 

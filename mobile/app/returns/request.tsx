@@ -1,36 +1,26 @@
 import { useMutation } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
+import { GuestAuthPrompt } from '@/components/GuestAuthPrompt';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { createReturnRequest } from '@/lib/api';
 import { isSignedIn, promptAuth } from '@/lib/authGate';
 import { colors, spacing, typography } from '@/lib/theme';
-import { useAuthStore } from '@/stores/auth';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 
 export default function ReturnRequestScreen() {
   const { orderNumber, productName } = useLocalSearchParams<{
     orderNumber?: string;
     productName?: string;
   }>();
-  const isHydrated = useAuthStore((s) => s.isHydrated);
-  const token = useAuthStore((s) => s.token);
+  const { isHydrated, token } = useRequireAuth();
 
   const returnPath = orderNumber
     ? `/returns/request?orderNumber=${encodeURIComponent(orderNumber)}${productName ? `&productName=${encodeURIComponent(productName)}` : ''}`
     : '/returns/request';
-
-  useEffect(() => {
-    if (!isHydrated) return;
-    if (!token) {
-      promptAuth({
-        returnTo: returnPath,
-        message: 'Sign in to submit a return request',
-      });
-    }
-  }, [isHydrated, token, returnPath]);
 
   const [reason, setReason] = useState('');
   const [product, setProduct] = useState(productName ?? '');
@@ -64,6 +54,21 @@ export default function ReturnRequestScreen() {
     }
     submit.mutate();
   };
+
+  if (isHydrated && !token) {
+    return (
+      <View style={styles.container}>
+        <AppHeader title="Return Request" showBack showCart={false} showLocation={false} />
+        <GuestAuthPrompt
+          icon="assignment-return"
+          title="Sign in to request a return"
+          subtitle="Submit return requests for delivered orders after you sign in."
+          returnTo={returnPath}
+          message="Sign in to submit a return request"
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

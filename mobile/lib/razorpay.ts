@@ -15,6 +15,7 @@ export type { RazorpayCheckoutResult, RazorpayOrderResponse, RazorpayPrefill };
 export async function createRazorpayOrder(amount: number): Promise<RazorpayOrderResponse> {
   return strapiFetch<RazorpayOrderResponse>('/api/payment/razorpay-order', {
     method: 'POST',
+    auth: true,
     body: { amount },
   });
 }
@@ -26,6 +27,7 @@ export async function verifyRazorpayPayment(payload: {
 }) {
   return strapiFetch<{ verified: boolean; mock: boolean }>('/api/payment/verify', {
     method: 'POST',
+    auth: true,
     body: payload,
   });
 }

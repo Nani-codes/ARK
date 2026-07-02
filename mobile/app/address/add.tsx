@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
+import { GuestAuthPrompt } from '@/components/GuestAuthPrompt';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import {
   ADDRESS_TYPE_CONFIG,
@@ -25,9 +26,11 @@ import {
   parseNominatim,
   type NominatimResult,
 } from '@/lib/addressFormat';
+import { isSignedIn, promptAuth } from '@/lib/authGate';
 import { isPincodeServiceableSync, loadServiceablePincodes } from '@/lib/serviceability';
 import { colors, spacing, typography } from '@/lib/theme';
 import type { AddressType } from '@/lib/types';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useAddressStore } from '@/stores/addresses';
 import { useLocationStore } from '@/stores/location';
 
@@ -55,6 +58,16 @@ export default function AddAddressScreen() {
   }>();
 
   const isEditing = Boolean(params.id);
+  const { isHydrated, token } = useRequireAuth();
+
+  const addressReturnTo = useMemo(() => {
+    const query = new URLSearchParams();
+    if (params.id) query.set('id', params.id);
+    if (params.prefillStreet) query.set('prefillStreet', params.prefillStreet);
+    if (params.prefillCity) query.set('prefillCity', params.prefillCity);
+    const qs = query.toString();
+    return qs ? `/address/add?${qs}` : '/address/add';
+  }, [params.id, params.prefillStreet, params.prefillCity]);
 
   useEffect(() => {
     void loadServiceablePincodes();
@@ -180,6 +193,14 @@ export default function AddAddressScreen() {
   };
 
   const handleSave = async () => {
+    if (!isSignedIn()) {
+      promptAuth({
+        returnTo: addressReturnTo,
+        message: 'Sign in to save a delivery address',
+      });
+      return;
+    }
+
     if (!validate()) return;
     const data = {
       label,
@@ -232,6 +253,26 @@ export default function AddAddressScreen() {
       {errors[key] ? <Text style={styles.errorText}>{errors[key]}</Text> : null}
     </View>
   );
+
+  if (isHydrated && !token) {
+    return (
+      <View style={styles.container}>
+        <AppHeader
+          title={isEditing ? 'Edit Address' : 'Add New Address'}
+          showBack
+          showCart={false}
+          showLocation={false}
+        />
+        <GuestAuthPrompt
+          icon="location-on"
+          title="Sign in to save addresses"
+          subtitle="Delivery addresses are saved to your account for faster checkout."
+          returnTo={addressReturnTo}
+          message="Sign in to save a delivery address"
+        />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

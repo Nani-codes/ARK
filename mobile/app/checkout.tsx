@@ -2,11 +2,12 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AddressCard } from '@/components/AddressCard';
 import { AppHeader } from '@/components/AppHeader';
 import { DeliverySelectorModal } from '@/components/DeliverySelectorModal';
+import { GuestAuthPrompt } from '@/components/GuestAuthPrompt';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SectionHeader } from '@/components/SectionHeader';
 import { TemperatureBadge } from '@/components/TemperatureBadge';
@@ -27,6 +28,7 @@ import { estimateDeliveryAt, formatDeliveryEta } from '@/lib/deliveryEstimate';
 import { processOnlinePayment } from '@/lib/razorpay';
 import { isPincodeServiceable, loadServiceablePincodes } from '@/lib/serviceability';
 import { colors, spacing, typography } from '@/lib/theme';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useAddressStore } from '@/stores/addresses';
 import { useAuthStore } from '@/stores/auth';
 import type { CartLine } from '@/stores/cart';
@@ -52,6 +54,16 @@ export default function CheckoutScreen() {
     }
     return null;
   }, [buyNow, buyNowItemsRaw]);
+
+  const checkoutReturnTo = useMemo(
+    () =>
+      buyNow === 'true' && buyNowItemsRaw
+        ? `/checkout?buyNow=true&buyNowItems=${encodeURIComponent(buyNowItemsRaw)}`
+        : '/checkout',
+    [buyNow, buyNowItemsRaw]
+  );
+
+  const { isHydrated, isSignedIn: signedIn, token } = useRequireAuth();
 
   const cartItems = useCartStore((s) => s.items);
   const cartSubtotal = useCartStore((s) => s.subtotal());
@@ -183,11 +195,6 @@ export default function CheckoutScreen() {
   });
 
   const handlePlaceOrder = async () => {
-    const checkoutReturnTo =
-      buyNow === 'true' && buyNowItemsRaw
-        ? `/checkout?buyNow=true&buyNowItems=${encodeURIComponent(buyNowItemsRaw)}`
-        : '/checkout';
-
     if (!isSignedIn()) {
       promptAuth({
         returnTo: checkoutReturnTo,
@@ -224,6 +231,30 @@ export default function CheckoutScreen() {
     buyNow === 'true' ? !buyNowItems || buyNowItems.length === 0 : cartItems.length === 0;
   if (isEmpty) {
     return null;
+  }
+
+  if (!isHydrated) {
+    return (
+      <View style={styles.container}>
+        <AppHeader showBack showCart={false} showLocation={false} />
+        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.unit12 }} />
+      </View>
+    );
+  }
+
+  if (!token) {
+    return (
+      <View style={styles.container}>
+        <AppHeader showBack showCart={false} showLocation={false} />
+        <GuestAuthPrompt
+          icon="shopping-cart"
+          title="Sign in to checkout"
+          subtitle="Your cart is saved. Sign in to choose delivery, payment, and place your order."
+          returnTo={checkoutReturnTo}
+          message="Sign in to complete checkout"
+        />
+      </View>
+    );
   }
 
   const placeOrderLabel =
@@ -511,7 +542,7 @@ export default function CheckoutScreen() {
           label={placeOrderLabel}
           onPress={handlePlaceOrder}
           loading={placeOrder.isPending}
-          disabled={!selectedAddress || slotsDisabled}
+          disabled={!signedIn || !selectedAddress || slotsDisabled}
         />
         {!selectedAddress ? (
           <Text style={styles.addressHint}>Please select a delivery address to continue</Text>

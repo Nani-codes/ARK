@@ -43,6 +43,11 @@ export class StrapiRequestError extends Error {
 
 export async function strapiFetch<T>(path: string, options: FetchOptions = {}): Promise<T> {
   const { method = 'GET', body, auth = false } = options;
+
+  if (auth && !authToken) {
+    throw new StrapiRequestError('Authentication required', 401);
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };

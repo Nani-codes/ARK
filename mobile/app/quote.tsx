@@ -12,24 +12,32 @@ import {
 } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
+import { GuestAuthPrompt } from '@/components/GuestAuthPrompt';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { createQuoteRequest, fetchProducts } from '@/lib/api';
 import { formatFullAddress } from '@/lib/addressFormat';
 import { isSignedIn, promptAuth } from '@/lib/authGate';
 import { colors, spacing, typography } from '@/lib/theme';
 import type { Product } from '@/lib/types';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useAddressStore } from '@/stores/addresses';
 import { useAuthStore } from '@/stores/auth';
 
 export default function QuoteScreen() {
   const { product: productParam } = useLocalSearchParams<{ product?: string }>();
   const user = useAuthStore((s) => s.user);
+  const { isHydrated, token } = useRequireAuth();
   const selectedAddress = useAddressStore((s) => s.getSelected());
+
+  const quoteReturnTo = productParam
+    ? `/quote?product=${encodeURIComponent(productParam)}`
+    : '/quote';
 
   const { data: bulkProducts } = useQuery({
     queryKey: ['products', 'bulk'],
     queryFn: () => fetchProducts({ pageSize: 50 }),
     select: (res) => res.data.filter((p) => p.bulkPricingEnabled),
+    enabled: isHydrated && !!token,
   });
 
   const products = bulkProducts ?? [];
@@ -94,7 +102,7 @@ export default function QuoteScreen() {
   const handleSubmit = () => {
     if (!isSignedIn()) {
       promptAuth({
-        returnTo: '/quote',
+        returnTo: quoteReturnTo,
         message: 'Sign in to submit a bulk quote request',
       });
       return;
@@ -118,6 +126,21 @@ export default function QuoteScreen() {
     }
     submit.mutate();
   };
+
+  if (isHydrated && !token) {
+    return (
+      <View style={styles.container}>
+        <AppHeader title="Bulk Quote Request" showBack showCart={false} showLocation={false} />
+        <GuestAuthPrompt
+          icon="description"
+          title="Sign in for bulk quotes"
+          subtitle="Submit large-order quote requests and track responses after you sign in."
+          returnTo={quoteReturnTo}
+          message="Sign in to submit a bulk quote request"
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
