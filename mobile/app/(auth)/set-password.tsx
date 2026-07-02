@@ -7,6 +7,7 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { isValidPassword, savePassword } from '@/lib/credentials';
 import { authParamsWithReturnTo, routeAfterAuth } from '@/lib/authGate';
+import { setStrapiPassword } from '@/lib/strapi';
 import { colors, spacing, typography } from '@/lib/theme';
 import { useAuthStore } from '@/stores/auth';
 
@@ -48,6 +49,7 @@ export default function SetPasswordScreen() {
     setError('');
     setLoading(true);
     try {
+      await setStrapiPassword(password);
       await savePassword(phone, password);
 
       if (mode === 'reset') {

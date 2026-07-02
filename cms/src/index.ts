@@ -1,8 +1,10 @@
 import type { Core } from '@strapi/strapi';
 
 import { migrateStatusColumns } from './bootstrap/migrate-status-columns';
+import { migrateLegacyProfessionals } from './bootstrap/migrate-professionals';
 import { CATALOG_PRODUCTS } from './data/catalog-seed';
 import { HOME_BANNERS } from './data/home-banner-seed';
+import { SPECIALTY_SEEDS } from './data/specialty-seed';
 import { KAJARIA_COLOUR_SWATCHES } from './data/variant-image-assets';
 import { uploadLocalImage } from './utils/seed-media';
 import { HYDERABAD_PINCODES } from './data/hyderabad-pincodes';
@@ -16,8 +18,10 @@ const PUBLIC_ACTIONS = [
   { controller: 'home-banner', action: 'find' },
   { controller: 'home-banner', action: 'findOne' },
   { controller: 'serviceable-pincode', action: 'find' },
-  { controller: 'user-profile', action: 'listProfessionals' },
-  { controller: 'user-profile', action: 'getProfessional' },
+  { controller: 'specialty', action: 'find' },
+  { controller: 'professional-profile', action: 'listProfessionals' },
+  { controller: 'professional-profile', action: 'getProfessional' },
+  { controller: 'professional-profile', action: 'listReviews' },
 ];
 
 const AUTH_ACTIONS = [
@@ -36,6 +40,13 @@ const AUTH_ACTIONS = [
   { controller: 'return-request', action: 'create' },
   { controller: 'user-profile', action: 'me' },
   { controller: 'user-profile', action: 'updateMe' },
+  { controller: 'professional-profile', action: 'me' },
+  { controller: 'professional-profile', action: 'updateMe' },
+  { controller: 'professional-profile', action: 'createProject' },
+  { controller: 'professional-profile', action: 'updateProject' },
+  { controller: 'professional-profile', action: 'deleteProject' },
+  { controller: 'professional-profile', action: 'submitReview' },
+  { controller: 'professional-profile', action: 'requestCallback' },
 ];
 
 async function ensurePermission(
@@ -357,6 +368,30 @@ async function patchVariantSwatchImages(strapi: Core.Strapi) {
   strapi.log.info(`Patched variant swatch images for ${slug}`);
 }
 
+async function seedSpecialties(strapi: Core.Strapi) {
+  for (const seed of SPECIALTY_SEEDS) {
+    const exists = await strapi.db.query('api::specialty.specialty').findOne({
+      where: { slug: seed.slug },
+    });
+    if (exists) continue;
+    await strapi.documents('api::specialty.specialty').create({
+      data: {
+        name: seed.name,
+        slug: seed.slug,
+        trade: seed.trade as
+          | 'contractor'
+          | 'architect'
+          | 'interior_designer'
+          | 'electrician'
+          | 'plumber'
+          | 'painter'
+          | 'other',
+      },
+    });
+  }
+  strapi.log.info(`Seeded up to ${SPECIALTY_SEEDS.length} specialties`);
+}
+
 async function seedHomeBanners(strapi: Core.Strapi) {
   const count = await strapi.db.query('api::home-banner.home-banner').count();
   if (count > 0) return;
@@ -404,5 +439,7 @@ export default {
     await patchMultiVariantCatalog(strapi);
     await patchVariantSwatchImages(strapi);
     await seedHomeBanners(strapi);
+    await seedSpecialties(strapi);
+    await migrateLegacyProfessionals(strapi);
   },
 };

@@ -26,6 +26,12 @@
     "active": {
       "type": "boolean",
       "default": true
+    },
+    "professionalProfiles": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::professional-profile.professional-profile",
+      "mappedBy": "serviceAreas"
     }
   }
 }

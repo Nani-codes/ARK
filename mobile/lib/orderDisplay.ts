@@ -48,3 +48,21 @@ export function formatOrderDate(createdAt: string, withTime = false) {
 export function orderDisplayNumber(orderNumber?: string) {
   return orderNumber?.replace('ORD-', '') ?? '—';
 }
+
+/**
+ * Builds a meaningful, product-based order title from its line items.
+ * Falls back to the order number when no items are available.
+ */
+export function orderDisplayTitle(order: Pick<Order, 'items' | 'orderNumber'>) {
+  const names = (order.items ?? [])
+    .map((item) => item.productName?.trim())
+    .filter((name): name is string => Boolean(name));
+
+  if (names.length === 0) {
+    return `Order #${orderDisplayNumber(order.orderNumber)}`;
+  }
+
+  const [first, ...rest] = names;
+  if (rest.length === 0) return first;
+  return `${first} + ${rest.length} more`;
+}

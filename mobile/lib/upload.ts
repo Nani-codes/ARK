@@ -1,8 +1,16 @@
 import { getAuthToken, getStrapiUrl, mediaUrl } from '@/lib/strapi';
 
-type UploadResponse = Array<{ url?: string }>;
+type UploadResponse = Array<{ id?: number; url?: string }>;
 
-export async function uploadImageFromUri(localUri: string, fileName = 'work.jpg'): Promise<string> {
+export type UploadedImage = {
+  id: number;
+  url: string;
+};
+
+export async function uploadImageFromUri(
+  localUri: string,
+  fileName = 'work.jpg'
+): Promise<UploadedImage> {
   const token = getAuthToken();
   if (!token) {
     throw new Error('You must be logged in to upload images');
@@ -32,13 +40,27 @@ export async function uploadImageFromUri(localUri: string, fileName = 'work.jpg'
     throw new Error(message);
   }
 
-  const url = Array.isArray(json) ? json[0]?.url : undefined;
-  const resolved = mediaUrl(url);
-  if (!resolved) {
-    throw new Error('Upload succeeded but no image URL was returned');
+  const file = Array.isArray(json) ? json[0] : undefined;
+  const resolved = mediaUrl(file?.url);
+  if (!file?.id || !resolved) {
+    throw new Error('Upload succeeded but no image was returned');
   }
 
-  return resolved;
+  return { id: file.id, url: resolved };
+}
+
+export async function uploadImagesFromUris(uris: string[]): Promise<UploadedImage[]> {
+  const uploads: UploadedImage[] = [];
+  for (let i = 0; i < uris.length; i++) {
+    uploads.push(await uploadImageFromUri(uris[i], `project_${i + 1}.jpg`));
+  }
+  return uploads;
+}
+
+/** @deprecated Use uploadImageFromUri which returns { id, url } */
+export async function uploadImageUrlFromUri(localUri: string, fileName = 'work.jpg'): Promise<string> {
+  const uploaded = await uploadImageFromUri(localUri, fileName);
+  return uploaded.url;
 }
 
 export function newWorkId() {

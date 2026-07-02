@@ -81,6 +81,15 @@ export async function verifyOtp(phone: string, otp: string) {
   });
 }
 
+/** Persists the real Strapi password for the authenticated user (enables cross-device login). */
+export async function setStrapiPassword(password: string) {
+  return strapiFetch<{ ok: boolean }>('/api/phone-auth/set-password', {
+    method: 'POST',
+    auth: true,
+    body: { password },
+  });
+}
+
 /** Strapi users-permissions local login (identifier = user_{phone}). */
 export async function loginWithStrapiLocal(phone: string, password: string) {
   return strapiFetch<{ jwt: string; user: Record<string, unknown> }>('/api/auth/local', {

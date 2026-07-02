@@ -1,5 +1,4 @@
 import { mapAuthUser } from '../../../lib/mapAuthUser';
-import { mapProfessionalProfile } from '../../../lib/mapProfessional';
 import { normalizeProfessionalWorks } from '../../../lib/professional-works';
 import { resolveAuthUser } from '../../../lib/resolveAuthUser';
 
@@ -66,42 +65,5 @@ export default {
     });
 
     ctx.send({ ok: true });
-  },
-
-  async listProfessionals(ctx) {
-    const professionals = await strapi.db.query('plugin::users-permissions.user').findMany({
-      where: {
-        isProfessional: true,
-        listedAsProfessional: true,
-        professionType: { $notNull: true },
-      },
-      orderBy: { updatedAt: 'desc' },
-    });
-
-    ctx.send({
-      data: professionals.map((u) => mapProfessionalProfile(u)),
-    });
-  },
-
-  async getProfessional(ctx) {
-    const id = Number(ctx.params.id);
-    if (!Number.isFinite(id)) {
-      return ctx.badRequest('Invalid professional id');
-    }
-
-    const user = await strapi.db.query('plugin::users-permissions.user').findOne({
-      where: {
-        id,
-        isProfessional: true,
-        listedAsProfessional: true,
-        professionType: { $notNull: true },
-      },
-    });
-
-    if (!user) {
-      return ctx.notFound('Professional not found');
-    }
-
-    ctx.send({ data: mapProfessionalProfile(user) });
   },
 };

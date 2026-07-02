@@ -7,7 +7,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, T
 import { AppHeader } from '@/components/AppHeader';
 import { GuestAuthPrompt } from '@/components/GuestAuthPrompt';
 import { fetchOrders } from '@/lib/api';
-import { ORDER_STATUS_STYLES, orderDisplayNumber } from '@/lib/orderDisplay';
+import { ORDER_STATUS_STYLES, orderDisplayNumber, orderDisplayTitle } from '@/lib/orderDisplay';
 import { colors, spacing, typography } from '@/lib/theme';
 import type { Order } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
@@ -90,11 +90,11 @@ export default function OrdersScreen() {
                         year: 'numeric',
                       }).toUpperCase()}
                     </Text>
-                    <Text style={styles.orderNum}>
-                      Order #{orderDisplayNumber(order.orderNumber)}
+                    <Text style={styles.orderNum} numberOfLines={1}>
+                      {orderDisplayTitle(order)}
                     </Text>
                     <Text style={styles.meta}>
-                      {itemCount} Items • {totalQty} units
+                      #{orderDisplayNumber(order.orderNumber)} • {itemCount} Items • {totalQty} units
                     </Text>
                   </View>
                 </View>

@@ -1,0 +1,113 @@
+{
+  "kind": "collectionType",
+  "collectionName": "professional_profiles",
+  "info": {
+    "singularName": "professional-profile",
+    "pluralName": "professional-profiles",
+    "displayName": "Professional Profile",
+    "description": "Construction professional marketplace profiles"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "displayName": {
+      "type": "string",
+      "required": true
+    },
+    "headline": {
+      "type": "string"
+    },
+    "bio": {
+      "type": "text"
+    },
+    "avatar": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"]
+    },
+    "coverImage": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"]
+    },
+    "professionType": {
+      "type": "enumeration",
+      "enum": [
+        "contractor",
+        "architect",
+        "interior_designer",
+        "electrician",
+        "plumber",
+        "painter",
+        "other"
+      ],
+      "required": true
+    },
+    "otherProfession": {
+      "type": "string"
+    },
+    "yearsExperience": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    },
+    "city": {
+      "type": "string"
+    },
+    "serviceAreas": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::serviceable-pincode.serviceable-pincode",
+      "inversedBy": "professionalProfiles"
+    },
+    "specialties": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::specialty.specialty",
+      "inversedBy": "professionals"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "whatsapp": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "listed": {
+      "type": "boolean",
+      "default": false
+    },
+    "verified": {
+      "type": "boolean",
+      "default": false
+    },
+    "ratingAverage": {
+      "type": "decimal",
+      "default": 0
+    },
+    "ratingCount": {
+      "type": "integer",
+      "default": 0
+    },
+    "portfolioProjects": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::portfolio-project.portfolio-project",
+      "mappedBy": "professional"
+    },
+    "reviews": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::professional-review.professional-review",
+      "mappedBy": "professional"
+    }
+  }
+}

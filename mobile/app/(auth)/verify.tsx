@@ -63,8 +63,8 @@ export default function VerifyScreen() {
     setLoading(true);
     try {
       const user = await login(phone, otp);
-      const needsSetPassword =
-        mode === 'signup' || mode === 'reset' || !(await hasPassword(phone));
+      // New users (no device password yet) set one; existing users skip unless resetting.
+      const needsSetPassword = mode === 'reset' || !(await hasPassword(phone));
       routeAfterVerify(phone, mode, user, needsSetPassword, returnTo);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Verification failed');

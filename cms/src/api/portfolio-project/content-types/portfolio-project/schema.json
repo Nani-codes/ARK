@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "portfolio_projects",
+  "info": {
+    "singularName": "portfolio-project",
+    "pluralName": "portfolio-projects",
+    "displayName": "Portfolio Project",
+    "description": "Professional portfolio work showcase"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "professional": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::professional-profile.professional-profile",
+      "inversedBy": "portfolioProjects"
+    },
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "images": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": ["images"]
+    },
+    "legacyImageUrl": {
+      "type": "string"
+    },
+    "completedAt": {
+      "type": "date"
+    },
+    "location": {
+      "type": "string"
+    },
+    "sortOrder": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}

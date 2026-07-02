@@ -140,6 +140,54 @@ export type ProfessionalWork = {
   imageUrl?: string;
 };
 
+export type Specialty = {
+  id: number;
+  name: string;
+  slug: string;
+  trade?: ProfessionType;
+};
+
+export type ServiceArea = {
+  id: number;
+  pincode: string;
+  city?: string;
+  zone?: string;
+};
+
+export type PortfolioProject = {
+  id: number;
+  documentId?: string;
+  title: string;
+  description?: string | null;
+  imageUrls: string[];
+  legacyImageUrl?: string;
+  completedAt?: string | null;
+  location?: string | null;
+  sortOrder: number;
+};
+
+export type ProfessionalReview = {
+  id: number;
+  rating: number;
+  comment?: string | null;
+  authorName: string;
+  createdAt?: string;
+};
+
+export type ProfessionalSort = 'top_rated' | 'most_projects' | 'recent' | 'experience';
+
+export type ProfessionalFilters = {
+  q?: string;
+  trade?: ProfessionType | '';
+  city?: string;
+  pincode?: string;
+  minRating?: number;
+  minExperience?: number;
+  sort?: ProfessionalSort;
+  page?: number;
+  pageSize?: number;
+};
+
 export type AuthUser = {
   id: number;
   username?: string;
@@ -157,14 +205,34 @@ export type AuthUser = {
 
 export type ProfessionalProfile = {
   id: number;
+  documentId?: string;
+  userId?: number;
   displayName: string;
-  contractorId?: string;
-  phone?: string;
-  professionType: ProfessionType;
-  professionalBio?: string | null;
-  professionalWorks?: ProfessionalWork[];
-  workCount?: number;
+  headline?: string | null;
+  bio?: string | null;
+  avatarUrl?: string;
   coverImageUrl?: string;
+  professionType: ProfessionType;
+  otherProfession?: string | null;
+  yearsExperience: number;
+  city?: string | null;
+  phone?: string;
+  whatsapp?: string;
+  email?: string | null;
+  listed: boolean;
+  verified: boolean;
+  ratingAverage: number;
+  ratingCount: number;
+  specialties: Specialty[];
+  serviceAreas: ServiceArea[];
+  portfolioProjects?: PortfolioProject[];
+  reviews?: ProfessionalReview[];
+  workCount: number;
+  contractorId?: string;
+  /** @deprecated Use bio */
+  professionalBio?: string | null;
+  /** @deprecated Use portfolioProjects */
+  professionalWorks?: ProfessionalWork[];
 };
 
 export type StrapiListResponse<T> = {

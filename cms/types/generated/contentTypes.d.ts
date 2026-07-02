@@ -672,6 +672,46 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiPortfolioProjectPortfolioProject
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'portfolio_projects';
+  info: {
+    description: 'Professional portfolio work showcase';
+    displayName: 'Portfolio Project';
+    pluralName: 'portfolio-projects';
+    singularName: 'portfolio-project';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    completedAt: Schema.Attribute.Date;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    images: Schema.Attribute.Media<'images', true>;
+    legacyImageUrl: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::portfolio-project.portfolio-project'
+    > &
+      Schema.Attribute.Private;
+    location: Schema.Attribute.String;
+    professional: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::professional-profile.professional-profile'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    sortOrder: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiProductProduct extends Struct.CollectionTypeSchema {
   collectionName: 'products';
   info: {
@@ -748,6 +788,136 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     variantOptionName: Schema.Attribute.String &
       Schema.Attribute.DefaultTo<'Size'>;
     variants: Schema.Attribute.Component<'product.product-variant', true>;
+  };
+}
+
+export interface ApiProfessionalProfileProfessionalProfile
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'professional_profiles';
+  info: {
+    description: 'Construction professional marketplace profiles';
+    displayName: 'Professional Profile';
+    pluralName: 'professional-profiles';
+    singularName: 'professional-profile';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    avatar: Schema.Attribute.Media<'images'>;
+    bio: Schema.Attribute.Text;
+    city: Schema.Attribute.String;
+    coverImage: Schema.Attribute.Media<'images'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    displayName: Schema.Attribute.String & Schema.Attribute.Required;
+    email: Schema.Attribute.String;
+    headline: Schema.Attribute.String;
+    listed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::professional-profile.professional-profile'
+    > &
+      Schema.Attribute.Private;
+    otherProfession: Schema.Attribute.String;
+    phone: Schema.Attribute.String;
+    portfolioProjects: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::portfolio-project.portfolio-project'
+    >;
+    professionType: Schema.Attribute.Enumeration<
+      [
+        'contractor',
+        'architect',
+        'interior_designer',
+        'electrician',
+        'plumber',
+        'painter',
+        'other',
+      ]
+    > &
+      Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    ratingAverage: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    ratingCount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    reviews: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::professional-review.professional-review'
+    >;
+    serviceAreas: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::serviceable-pincode.serviceable-pincode'
+    >;
+    specialties: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::specialty.specialty'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
+    verified: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    whatsapp: Schema.Attribute.String;
+    yearsExperience: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+  };
+}
+
+export interface ApiProfessionalReviewProfessionalReview
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'professional_reviews';
+  info: {
+    description: 'Customer reviews for professionals';
+    displayName: 'Professional Review';
+    pluralName: 'professional-reviews';
+    singularName: 'professional-review';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    author: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    comment: Schema.Attribute.Text;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::professional-review.professional-review'
+    > &
+      Schema.Attribute.Private;
+    professional: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::professional-profile.professional-profile'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    rating: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 5;
+          min: 1;
+        },
+        number
+      >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
   };
 }
 
@@ -869,11 +1039,60 @@ export interface ApiServiceablePincodeServiceablePincode
     pincode: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.Unique;
+    professionalProfiles: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::professional-profile.professional-profile'
+    >;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     zone: Schema.Attribute.String;
+  };
+}
+
+export interface ApiSpecialtySpecialty extends Struct.CollectionTypeSchema {
+  collectionName: 'specialties';
+  info: {
+    description: 'Professional trade specialties';
+    displayName: 'Specialty';
+    pluralName: 'specialties';
+    singularName: 'specialty';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::specialty.specialty'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    professionals: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::professional-profile.professional-profile'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
+    trade: Schema.Attribute.Enumeration<
+      [
+        'contractor',
+        'architect',
+        'interior_designer',
+        'electrician',
+        'plumber',
+        'painter',
+        'other',
+      ]
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
   };
 }
 
@@ -1416,10 +1635,14 @@ declare module '@strapi/strapi' {
       'api::category.category': ApiCategoryCategory;
       'api::home-banner.home-banner': ApiHomeBannerHomeBanner;
       'api::order.order': ApiOrderOrder;
+      'api::portfolio-project.portfolio-project': ApiPortfolioProjectPortfolioProject;
       'api::product.product': ApiProductProduct;
+      'api::professional-profile.professional-profile': ApiProfessionalProfileProfessionalProfile;
+      'api::professional-review.professional-review': ApiProfessionalReviewProfessionalReview;
       'api::quote-request.quote-request': ApiQuoteRequestQuoteRequest;
       'api::return-request.return-request': ApiReturnRequestReturnRequest;
       'api::serviceable-pincode.serviceable-pincode': ApiServiceablePincodeServiceablePincode;
+      'api::specialty.specialty': ApiSpecialtySpecialty;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;

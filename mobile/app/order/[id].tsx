@@ -15,6 +15,7 @@ import { GST_LABEL } from '@/lib/pricing';
 import {
   formatOrderDate,
   orderDisplayNumber,
+  orderDisplayTitle,
   ORDER_STATUS_STYLES,
   PAYMENT_METHOD_LABELS,
 } from '@/lib/orderDisplay';
@@ -129,13 +130,16 @@ export default function OrderDetailScreen() {
   return (
     <View style={styles.container}>
       <AppHeader showBack showCart={false} showLocation={false} />
-      <SectionHeader title={`Order #${orderDisplayNumber(order.orderNumber)}`} icon="receipt-long" />
+      <SectionHeader title={orderDisplayTitle(order)} icon="receipt-long" />
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.statusRow}>
           <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
             <Text style={[styles.statusText, { color: status.text }]}>{status.label}</Text>
           </View>
-          <Text style={styles.placedAt}>Placed {formatOrderDate(order.createdAt, true)}</Text>
+          <Text style={styles.placedAt}>
+            Order #{orderDisplayNumber(order.orderNumber)} • Placed{' '}
+            {formatOrderDate(order.createdAt, true)}
+          </Text>
         </View>
 
         {eta ? (

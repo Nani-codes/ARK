@@ -20,5 +20,15 @@ export default {
         middlewares: [],
       },
     },
+    {
+      method: 'POST',
+      path: '/phone-auth/set-password',
+      handler: 'phone-auth.setPassword',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
   ],
 };

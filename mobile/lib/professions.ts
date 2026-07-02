@@ -10,8 +10,9 @@ export const PROFESSION_OPTIONS: { key: ProfessionType; label: string; icon: str
   { key: 'other', label: 'Other Professional', icon: 'handyman' },
 ];
 
-export function professionLabel(type?: ProfessionType | null) {
+export function professionLabel(type?: ProfessionType | null, otherProfession?: string | null) {
   if (!type) return 'Professional';
+  if (type === 'other' && otherProfession?.trim()) return otherProfession.trim();
   return PROFESSION_OPTIONS.find((p) => p.key === type)?.label ?? 'Professional';
 }
 

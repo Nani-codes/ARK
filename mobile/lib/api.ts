@@ -2,20 +2,24 @@ import { normalizeHomeBanner } from './normalizeHomeBanner';
 import { normalizeOrder } from './normalizeOrder';
 import { normalizeProduct } from './normalizeProduct';
 import { normalizeQuote } from './normalizeQuote';
-import { strapiFetch } from './strapi';
+import { strapiFetch, mediaUrl } from './strapi';
 import type {
   AppConfig,
   AuthUser,
   Category,
   HomeBanner,
   Order,
+  PortfolioProject,
   Product,
+  ProfessionalFilters,
   ProfessionalProfile,
+  ProfessionalReview,
   ProfessionalWork,
   ProfessionType,
   QuoteRequest,
   ReturnRequest,
   SavedAddress,
+  Specialty,
   StrapiListResponse,
   StrapiSingleResponse,
 } from './types';
@@ -101,7 +105,7 @@ export async function fetchHomeBanners() {
 }
 
 export async function fetchServiceablePincodes() {
-  return strapiFetch<StrapiListResponse<{ pincode: string; city: string; active: boolean }>>(
+  return strapiFetch<StrapiListResponse<{ id: number; pincode: string; city?: string; zone?: string }>>(
     '/api/serviceable-pincodes?pagination[pageSize]=200&filters[active][$eq]=true'
   );
 }
@@ -273,10 +277,171 @@ export function savePushToken(expoPushToken: string) {
   });
 }
 
-export async function fetchProfessionals() {
-  return strapiFetch<{ data: ProfessionalProfile[] }>('/api/user-profile/professionals');
+function buildProfessionalQuery(filters: ProfessionalFilters = {}) {
+  const params = new URLSearchParams();
+  if (filters.q) params.set('q', filters.q);
+  if (filters.trade) params.set('trade', filters.trade);
+  if (filters.city) params.set('city', filters.city);
+  if (filters.pincode) params.set('pincode', filters.pincode);
+  if (filters.minRating) params.set('minRating', String(filters.minRating));
+  if (filters.minExperience) params.set('minExperience', String(filters.minExperience));
+  if (filters.sort) params.set('sort', filters.sort);
+  if (filters.page) params.set('page', String(filters.page));
+  if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+function normalizeProfessionalProfile(pro: ProfessionalProfile): ProfessionalProfile {
+  return {
+    ...pro,
+    avatarUrl: pro.avatarUrl ? mediaUrl(pro.avatarUrl) : undefined,
+    coverImageUrl: pro.coverImageUrl ? mediaUrl(pro.coverImageUrl) : undefined,
+    portfolioProjects: pro.portfolioProjects?.map((project) => ({
+      ...project,
+      imageUrls: project.imageUrls.map((url) => mediaUrl(url) ?? url),
+    })),
+    professionalBio: pro.bio ?? pro.professionalBio,
+    professionalWorks: pro.portfolioProjects?.map((project) => ({
+      id: String(project.id),
+      title: project.title,
+      description: project.description ?? undefined,
+      imageUrl: project.imageUrls[0],
+    })),
+    workCount: pro.workCount ?? pro.portfolioProjects?.length ?? 0,
+  };
+}
+
+export async function fetchProfessionals(filters: ProfessionalFilters = {}) {
+  const res = await strapiFetch<StrapiListResponse<ProfessionalProfile>>(
+    `/api/professionals${buildProfessionalQuery(filters)}`
+  );
+  return {
+    ...res,
+    data: res.data.map(normalizeProfessionalProfile),
+  };
 }
 
 export async function fetchProfessional(id: number) {
-  return strapiFetch<{ data: ProfessionalProfile }>(`/api/user-profile/professionals/${id}`);
+  const res = await strapiFetch<StrapiSingleResponse<ProfessionalProfile>>(
+    `/api/professionals/${id}`
+  );
+  return { data: normalizeProfessionalProfile(res.data) };
+}
+
+export async function fetchMyProfessionalProfile() {
+  const res = await strapiFetch<{ data: ProfessionalProfile | null }>(
+    '/api/professional-profile/me',
+    { auth: true }
+  );
+  return {
+    data: res.data ? normalizeProfessionalProfile(res.data) : null,
+  };
+}
+
+export function updateMyProfessionalProfile(payload: {
+  isProfessional?: boolean;
+  displayName?: string;
+  headline?: string | null;
+  bio?: string | null;
+  professionType?: ProfessionType;
+  otherProfession?: string | null;
+  yearsExperience?: number;
+  city?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
+  listed?: boolean;
+  specialtyIds?: number[];
+  serviceAreaIds?: number[];
+  avatarId?: number | null;
+  coverImageId?: number | null;
+}) {
+  const body: Record<string, unknown> = { ...payload };
+  if (payload.avatarId !== undefined) body.avatar = payload.avatarId;
+  if (payload.coverImageId !== undefined) body.coverImage = payload.coverImageId;
+  delete body.avatarId;
+  delete body.coverImageId;
+
+  return strapiFetch<{ data: ProfessionalProfile }>('/api/professional-profile/me', {
+    method: 'PUT',
+    auth: true,
+    body,
+  }).then((res) => ({ data: normalizeProfessionalProfile(res.data) }));
+}
+
+export function createPortfolioProject(payload: {
+  title: string;
+  description?: string | null;
+  location?: string | null;
+  completedAt?: string | null;
+  sortOrder?: number;
+  imageIds?: number[];
+  legacyImageUrl?: string | null;
+}) {
+  return strapiFetch<{ data: PortfolioProject }>('/api/professional-profile/me/projects', {
+    method: 'POST',
+    auth: true,
+    body: payload,
+  });
+}
+
+export function updatePortfolioProject(
+  projectId: number,
+  payload: {
+    title?: string;
+    description?: string | null;
+    location?: string | null;
+    completedAt?: string | null;
+    sortOrder?: number;
+    imageIds?: number[];
+    legacyImageUrl?: string | null;
+  }
+) {
+  return strapiFetch<{ data: PortfolioProject }>(
+    `/api/professional-profile/me/projects/${projectId}`,
+    {
+      method: 'PUT',
+      auth: true,
+      body: payload,
+    }
+  );
+}
+
+export function deletePortfolioProject(projectId: number) {
+  return strapiFetch<{ ok: boolean }>(`/api/professional-profile/me/projects/${projectId}`, {
+    method: 'DELETE',
+    auth: true,
+  });
+}
+
+export async function fetchProfessionalReviews(professionalId: number) {
+  return strapiFetch<{ data: ProfessionalReview[] }>(`/api/professionals/${professionalId}/reviews`);
+}
+
+export function submitProfessionalReview(
+  professionalId: number,
+  payload: { rating: number; comment?: string | null }
+) {
+  return strapiFetch<{ data: ProfessionalReview }>(`/api/professionals/${professionalId}/reviews`, {
+    method: 'POST',
+    auth: true,
+    body: payload,
+  });
+}
+
+export function requestProfessionalCallback(
+  professionalId: number,
+  payload: { message?: string } = {}
+) {
+  return strapiFetch<{ ok: boolean }>(`/api/professionals/${professionalId}/callback`, {
+    method: 'POST',
+    auth: true,
+    body: payload,
+  });
+}
+
+export async function fetchSpecialties(trade?: ProfessionType) {
+  const qs = trade ? `?trade=${trade}` : '';
+  return strapiFetch<{ data: Specialty[] }>(`/api/specialties${qs}`);
 }
