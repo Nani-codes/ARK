@@ -9,8 +9,13 @@ import {
   setAppLocked,
   verifyPassword,
 } from '@/lib/credentials';
-import { getSecureItem, setSecureItem } from '@/lib/secureStorage';
-import { loginWithStrapiLocal, setAuthToken, verifyOtp } from '@/lib/strapi';
+import { deleteSecureItem, getSecureItem, setSecureItem } from '@/lib/secureStorage';
+import {
+  loginWithStrapiLocal,
+  setAuthToken,
+  setUnauthorizedHandler,
+  verifyOtp,
+} from '@/lib/strapi';
 import type { AuthUser } from '@/lib/types';
 
 const TOKEN_KEY = 'ark_jwt';
@@ -27,6 +32,7 @@ type AuthState = {
   refreshUser: () => Promise<AuthUser | null>;
   setUser: (user: AuthUser) => Promise<void>;
   logout: () => Promise<void>;
+  handleSessionExpired: () => Promise<void>;
   needsOnboarding: () => boolean;
 };
 
@@ -147,8 +153,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ token: null, user: null });
   },
 
+  /**
+   * Called when the server rejects the JWT (401). Drops the stale token so
+   * route guards immediately treat the user as signed out and re-prompt login.
+   * The stored token is removed so it is not re-hydrated on next launch; the
+   * local password path then forces OTP re-verification.
+   */
+  handleSessionExpired: async () => {
+    if (!get().token) return;
+    setAuthToken(null);
+    set({ token: null, user: null });
+    await deleteSecureItem(TOKEN_KEY);
+  },
+
   needsOnboarding: () => {
     const user = get().user;
     return Boolean(user && user.onboardingComplete === false);
   },
 }));
+
+setUnauthorizedHandler(() => {
+  void useAuthStore.getState().handleSessionExpired();
+});

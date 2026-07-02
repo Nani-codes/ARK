@@ -15,6 +15,17 @@ export function getAuthToken() {
   return authToken;
 }
 
+/**
+ * Invoked when an authenticated request is rejected by the server with 401.
+ * Registered by the auth store to clear a stale/expired session so route
+ * guards fall back to the signed-out state instead of trusting a dead token.
+ */
+let onUnauthorized: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  onUnauthorized = handler;
+}
+
 export function getStrapiUrl() {
   return STRAPI_URL.replace(/\/$/, '');
 }
@@ -65,6 +76,9 @@ export async function strapiFetch<T>(path: string, options: FetchOptions = {}): 
   const json = await res.json().catch(() => ({}));
 
   if (!res.ok) {
+    if (res.status === 401 && auth) {
+      onUnauthorized?.();
+    }
     const message = json?.error?.message ?? json?.message ?? `Request failed (${res.status})`;
     throw new StrapiRequestError(message, res.status);
   }
